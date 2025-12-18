@@ -1,0 +1,437 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		7552FF722EF4175200A553E7 /* jRhodes3.sf2 in Resources */ = {isa = PBXBuildFile; fileRef = 7552FF712EF4175200A553E7 /* jRhodes3.sf2 */; };
+		7552FF742EF418AA00A553E7 /* UprightPianoKW-20220221.sf2 in Resources */ = {isa = PBXBuildFile; fileRef = 7552FF732EF418AA00A553E7 /* UprightPianoKW-20220221.sf2 */; };
+		E81234560001 /* ReharmAnythingApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = E81234550001 /* ReharmAnythingApp.swift */; };
+		E81234560002 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E81234550002 /* ContentView.swift */; };
+		E81234560003 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = E81234550003 /* Assets.xcassets */; };
+		E81234560004 /* Chord.swift in Sources */ = {isa = PBXBuildFile; fileRef = E81234550004 /* Chord.swift */; };
+		E81234560005 /* ReharmStrategy.swift in Sources */ = {isa = PBXBuildFile; fileRef = E81234550005 /* ReharmStrategy.swift */; };
+		E81234560006 /* VoicingGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = E81234550006 /* VoicingGenerator.swift */; };
+		E81234560007 /* VoiceLeading.swift in Sources */ = {isa = PBXBuildFile; fileRef = E81234550007 /* VoiceLeading.swift */; };
+		E81234560008 /* AudioEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = E81234550008 /* AudioEngine.swift */; };
+		E81234560009 /* IrealParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = E81234550009 /* IrealParser.swift */; };
+		E81234560010 /* ChordViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = E81234550010 /* ChordViewModel.swift */; };
+		E81234560011 /* ChordInputView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E81234550011 /* ChordInputView.swift */; };
+		E81234560012 /* ReharmView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E81234550012 /* ReharmView.swift */; };
+		E81234560013 /* SoundFont.swift in Sources */ = {isa = PBXBuildFile; fileRef = E81234550013 /* SoundFont.swift */; };
+		E81234560014 /* NordicTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = E81234550014 /* NordicTheme.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		7552FF712EF4175200A553E7 /* jRhodes3.sf2 */ = {isa = PBXFileReference; lastKnownFileType = file; path = jRhodes3.sf2; sourceTree = "<group>"; };
+		7552FF732EF418AA00A553E7 /* UprightPianoKW-20220221.sf2 */ = {isa = PBXFileReference; lastKnownFileType = file; path = "UprightPianoKW-20220221.sf2"; sourceTree = "<group>"; };
+		E81234550000 /* ReharmAnything.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ReharmAnything.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		E81234550001 /* ReharmAnythingApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReharmAnythingApp.swift; sourceTree = "<group>"; };
+		E81234550002 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		E81234550003 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		E81234550004 /* Chord.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Chord.swift; sourceTree = "<group>"; };
+		E81234550005 /* ReharmStrategy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReharmStrategy.swift; sourceTree = "<group>"; };
+		E81234550006 /* VoicingGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoicingGenerator.swift; sourceTree = "<group>"; };
+		E81234550007 /* VoiceLeading.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceLeading.swift; sourceTree = "<group>"; };
+		E81234550008 /* AudioEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioEngine.swift; sourceTree = "<group>"; };
+		E81234550009 /* IrealParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IrealParser.swift; sourceTree = "<group>"; };
+		E81234550010 /* ChordViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChordViewModel.swift; sourceTree = "<group>"; };
+		E81234550011 /* ChordInputView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChordInputView.swift; sourceTree = "<group>"; };
+		E81234550012 /* ReharmView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReharmView.swift; sourceTree = "<group>"; };
+		E81234550013 /* SoundFont.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoundFont.swift; sourceTree = "<group>"; };
+		E81234550014 /* NordicTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NordicTheme.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		E81234540001 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		E81234530000 = {
+			isa = PBXGroup;
+			children = (
+				E81234530001 /* ReharmAnything */,
+				E81234530002 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		E81234530001 /* ReharmAnything */ = {
+			isa = PBXGroup;
+			children = (
+				E81234550001 /* ReharmAnythingApp.swift */,
+				E81234550002 /* ContentView.swift */,
+				E81234530003 /* Models */,
+				E81234530004 /* Views */,
+				E81234530005 /* ViewModels */,
+				E81234530006 /* Services */,
+				E81234530007 /* Audio */,
+				E81234530008 /* Theme */,
+				E81234550003 /* Assets.xcassets */,
+				7552FF712EF4175200A553E7 /* jRhodes3.sf2 */,
+				7552FF732EF418AA00A553E7 /* UprightPianoKW-20220221.sf2 */,
+			);
+			path = ReharmAnything;
+			sourceTree = "<group>";
+		};
+		E81234530002 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				E81234550000 /* ReharmAnything.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		E81234530003 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				E81234550004 /* Chord.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		E81234530004 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				E81234550011 /* ChordInputView.swift */,
+				E81234550012 /* ReharmView.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		E81234530005 /* ViewModels */ = {
+			isa = PBXGroup;
+			children = (
+				E81234550010 /* ChordViewModel.swift */,
+			);
+			path = ViewModels;
+			sourceTree = "<group>";
+		};
+		E81234530006 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				E81234550005 /* ReharmStrategy.swift */,
+				E81234550006 /* VoicingGenerator.swift */,
+				E81234550007 /* VoiceLeading.swift */,
+				E81234550009 /* IrealParser.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		E81234530007 /* Audio */ = {
+			isa = PBXGroup;
+			children = (
+				E81234550008 /* AudioEngine.swift */,
+				E81234550013 /* SoundFont.swift */,
+			);
+			path = Audio;
+			sourceTree = "<group>";
+		};
+		E81234530008 /* Theme */ = {
+			isa = PBXGroup;
+			children = (
+				E81234550014 /* NordicTheme.swift */,
+			);
+			path = Theme;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		E81234520001 /* ReharmAnything */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = E81234510001 /* Build configuration list for PBXNativeTarget "ReharmAnything" */;
+			buildPhases = (
+				E81234540000 /* Sources */,
+				E81234540001 /* Frameworks */,
+				E81234540002 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = ReharmAnything;
+			productName = ReharmAnything;
+			productReference = E81234550000 /* ReharmAnything.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		E81234500001 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1500;
+				LastUpgradeCheck = 1500;
+				TargetAttributes = {
+					E81234520001 = {
+						CreatedOnToolsVersion = 15.0;
+					};
+				};
+			};
+			buildConfigurationList = E81234510000 /* Build configuration list for PBXProject "ReharmAnything" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = E81234530000;
+			productRefGroup = E81234530002 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				E81234520001 /* ReharmAnything */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		E81234540002 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				E81234560003 /* Assets.xcassets in Resources */,
+				7552FF722EF4175200A553E7 /* jRhodes3.sf2 in Resources */,
+				7552FF742EF418AA00A553E7 /* UprightPianoKW-20220221.sf2 in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		E81234540000 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				E81234560001 /* ReharmAnythingApp.swift in Sources */,
+				E81234560002 /* ContentView.swift in Sources */,
+				E81234560004 /* Chord.swift in Sources */,
+				E81234560005 /* ReharmStrategy.swift in Sources */,
+				E81234560006 /* VoicingGenerator.swift in Sources */,
+				E81234560007 /* VoiceLeading.swift in Sources */,
+				E81234560008 /* AudioEngine.swift in Sources */,
+				E81234560009 /* IrealParser.swift in Sources */,
+				E81234560010 /* ChordViewModel.swift in Sources */,
+				E81234560011 /* ChordInputView.swift in Sources */,
+				E81234560012 /* ReharmView.swift in Sources */,
+				E81234560013 /* SoundFont.swift in Sources */,
+				E81234560014 /* NordicTheme.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		E81234510002 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		E81234510003 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		E81234510004 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_ASSET_PATHS = "";
+				DEVELOPMENT_TEAM = J3VT8T4HXY;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.jazz.ReharmAnything;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		E81234510005 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_ASSET_PATHS = "";
+				DEVELOPMENT_TEAM = J3VT8T4HXY;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.jazz.ReharmAnything;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		E81234510000 /* Build configuration list for PBXProject "ReharmAnything" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				E81234510002 /* Debug */,
+				E81234510003 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		E81234510001 /* Build configuration list for PBXNativeTarget "ReharmAnything" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				E81234510004 /* Debug */,
+				E81234510005 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = E81234500001 /* Project object */;
+}
