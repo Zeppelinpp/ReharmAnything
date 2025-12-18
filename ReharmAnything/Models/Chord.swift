@@ -159,14 +159,15 @@ struct Chord: Identifiable, Codable, Equatable {
     }
     
     // Polychord display for diminished stack voicing
-    // C7 with dimStack -> shows as E/C (E triad over C bass, using fraction notation)
+    // C7 with dimStack -> C triad + A triad (root + minor 3rd below root)
+    // Display as "C/A" (root triad on top, lower triad on bottom)
     private var polychordDisplayName: String {
-        // Upper triad is built on the major 3rd of the root
-        let upperRootPitchClass = (root.pitchClass + 4) % 12  // Major 3rd = 4 semitones
-        let upperRoot = NoteName.from(pitchClass: upperRootPitchClass)
+        // Lower triad is minor 3rd below root (root - 3 semitones)
+        let lowerRootPitchClass = (root.pitchClass - 3 + 12) % 12
+        let lowerRoot = NoteName.from(pitchClass: lowerRootPitchClass)
         
-        // Display as "UpperTriad\nBassNote" for vertical polychord notation
-        return "\(upperRoot.rawValue)\n\(root.rawValue)"
+        // Display as "RootTriad\nLowerTriad" for vertical polychord notation
+        return "\(root.rawValue)\n\(lowerRoot.rawValue)"
     }
     
     var isDominant: Bool {

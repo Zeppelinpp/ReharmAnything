@@ -81,15 +81,8 @@ struct ChordInputView: View {
             }
         }
         .padding(20)
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(NordicTheme.Dynamic.surface(colorScheme))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 16)
-                .stroke(NordicTheme.Dynamic.border(colorScheme), lineWidth: 0.5)
-        )
-        .shadow(color: NordicTheme.Dynamic.shadowColor(colorScheme), radius: 10, y: 4)
+        .background(NordicTheme.Dynamic.surface(colorScheme))
+        .cornerRadius(12)
     }
     
     private var loadedStatusSection: some View {
@@ -114,14 +107,8 @@ struct ChordInputView: View {
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 14)
-        .background(
-            RoundedRectangle(cornerRadius: 12)
-                .fill(NordicTheme.Colors.success.opacity(colorScheme == .dark ? 0.15 : 0.08))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 12)
-                .stroke(NordicTheme.Colors.success.opacity(0.3), lineWidth: 0.5)
-        )
+        .background(NordicTheme.Colors.success.opacity(colorScheme == .dark ? 0.15 : 0.08))
+        .cornerRadius(10)
     }
 }
 
@@ -152,10 +139,8 @@ struct ProgressionCard: View {
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 14)
-            .background(
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(NordicTheme.Dynamic.surfaceSecondary(colorScheme))
-            )
+            .background(NordicTheme.Dynamic.surfaceSecondary(colorScheme))
+            .cornerRadius(10)
         }
         .buttonStyle(.plain)
     }

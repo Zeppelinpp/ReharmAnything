@@ -23,6 +23,9 @@
 		E81234560012 /* ReharmView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E81234550012 /* ReharmView.swift */; };
 		E81234560013 /* SoundFont.swift in Sources */ = {isa = PBXBuildFile; fileRef = E81234550013 /* SoundFont.swift */; };
 		E81234560014 /* NordicTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = E81234550014 /* NordicTheme.swift */; };
+		E81234560015 /* MusicHumanizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = E81234550015 /* MusicHumanizer.swift */; };
+		E81234560016 /* RhythmPatternLibrary.swift in Sources */ = {isa = PBXBuildFile; fileRef = E81234550016 /* RhythmPatternLibrary.swift */; };
+		E81234560017 /* HumanizedPlaybackEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = E81234550017 /* HumanizedPlaybackEngine.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -43,6 +46,9 @@
 		E81234550012 /* ReharmView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReharmView.swift; sourceTree = "<group>"; };
 		E81234550013 /* SoundFont.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SoundFont.swift; sourceTree = "<group>"; };
 		E81234550014 /* NordicTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NordicTheme.swift; sourceTree = "<group>"; };
+		E81234550015 /* MusicHumanizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MusicHumanizer.swift; sourceTree = "<group>"; };
+		E81234550016 /* RhythmPatternLibrary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RhythmPatternLibrary.swift; sourceTree = "<group>"; };
+		E81234550017 /* HumanizedPlaybackEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HumanizedPlaybackEngine.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -131,6 +137,9 @@
 			children = (
 				E81234550008 /* AudioEngine.swift */,
 				E81234550013 /* SoundFont.swift */,
+				E81234550015 /* MusicHumanizer.swift */,
+				E81234550016 /* RhythmPatternLibrary.swift */,
+				E81234550017 /* HumanizedPlaybackEngine.swift */,
 			);
 			path = Audio;
 			sourceTree = "<group>";
@@ -227,6 +236,9 @@
 				E81234560012 /* ReharmView.swift in Sources */,
 				E81234560013 /* SoundFont.swift in Sources */,
 				E81234560014 /* NordicTheme.swift in Sources */,
+				E81234560015 /* MusicHumanizer.swift in Sources */,
+				E81234560016 /* RhythmPatternLibrary.swift in Sources */,
+				E81234560017 /* HumanizedPlaybackEngine.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

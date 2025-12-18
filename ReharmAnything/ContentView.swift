@@ -26,7 +26,7 @@ struct ContentView: View {
                 }
                 .tabViewStyle(.page(indexDisplayMode: .never))
                 
-                // Custom tab bar
+                // Custom tab bar - flush with bottom
                 customTabBar
             }
         }
@@ -81,7 +81,7 @@ struct ContentView: View {
     }
     
     private var customTabBar: some View {
-        HStack(spacing: 4) {
+        HStack(spacing: 0) {
             TabBarButton(
                 icon: "square.stack.3d.up",
                 title: "Charts",
@@ -105,19 +105,12 @@ struct ContentView: View {
                 }
             }
         }
-        .padding(.horizontal, 6)
-        .padding(.vertical, 6)
-        .background(
-            RoundedRectangle(cornerRadius: 14)
-                .fill(NordicTheme.Dynamic.surface(colorScheme))
-                .shadow(color: NordicTheme.Dynamic.shadowColor(colorScheme), radius: 8, y: -2)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 14)
-                .stroke(NordicTheme.Dynamic.border(colorScheme), lineWidth: 0.5)
-        )
-        .padding(.horizontal, 60)
-        .padding(.bottom, 10)
+        .background(NordicTheme.Dynamic.surface(colorScheme))
+        .overlay(alignment: .top) {
+            Rectangle()
+                .fill(NordicTheme.Dynamic.border(colorScheme))
+                .frame(height: 0.5)
+        }
     }
 }
 
@@ -131,16 +124,16 @@ struct TabBarButton: View {
     
     var body: some View {
         Button(action: action) {
-            VStack(spacing: 3) {
+            VStack(spacing: 4) {
                 ZStack(alignment: .topTrailing) {
                     Image(systemName: icon)
-                        .font(.system(size: 18, weight: .medium))
+                        .font(.system(size: 20, weight: .medium))
                     
                     if badge {
                         Circle()
                             .fill(NordicTheme.Colors.success)
                             .frame(width: 6, height: 6)
-                            .offset(x: 3, y: -3)
+                            .offset(x: 4, y: -2)
                     }
                 }
                 
@@ -151,13 +144,8 @@ struct TabBarButton: View {
                 ? NordicTheme.Colors.primary 
                 : NordicTheme.Dynamic.textSecondary(colorScheme))
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 8)
-            .background(
-                RoundedRectangle(cornerRadius: 10)
-                    .fill(isSelected 
-                        ? NordicTheme.Colors.primary.opacity(colorScheme == .dark ? 0.2 : 0.1)
-                        : Color.clear)
-            )
+            .padding(.top, 10)
+            .padding(.bottom, 6)
         }
         .buttonStyle(.plain)
     }

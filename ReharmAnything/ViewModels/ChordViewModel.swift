@@ -19,6 +19,12 @@ class ChordViewModel: ObservableObject {
     @Published var tempo: Double = 120
     @Published var isLooping = true
     
+    // Humanization state
+    @Published var selectedStyle: MusicStyle = .swing
+    @Published var selectedPattern: RhythmPattern?
+    @Published var humanizationEnabled = true
+    @Published var selectedPreset: HumanizationPreset = .natural
+    
     // Import state
     @Published var inputText = ""
     @Published var importError: String?
@@ -33,13 +39,16 @@ class ChordViewModel: ObservableObject {
     private let voicingGenerator = VoicingGenerator()
     private let voiceLeadingOptimizer = VoiceLeadingOptimizer()
     private let soundManager = SoundFontManager.shared
-    private var playbackEngine: ChordPlaybackEngine?
+    private var playbackEngine: HumanizedPlaybackEngine?
     
     private var cancellables = Set<AnyCancellable>()
     
     init() {
-        playbackEngine = ChordPlaybackEngine(soundManager: soundManager)
+        playbackEngine = HumanizedPlaybackEngine(soundManager: soundManager)
         setupBindings()
+        
+        // Set default style
+        selectedPattern = RhythmPatternLibrary.shared.getPatterns(for: .swing).first
     }
     
     private func setupBindings() {
@@ -50,6 +59,46 @@ class ChordViewModel: ObservableObject {
         playbackEngine?.$currentBeat
             .receive(on: DispatchQueue.main)
             .assign(to: &$currentBeat)
+    }
+    
+    // MARK: - Humanization Controls
+    
+    func setMusicStyle(_ style: MusicStyle) {
+        selectedStyle = style
+        playbackEngine?.setStyle(style)
+        selectedPattern = playbackEngine?.availablePatterns.first
+    }
+    
+    func setRhythmPattern(_ pattern: RhythmPattern?) {
+        selectedPattern = pattern
+        playbackEngine?.setPattern(pattern)
+    }
+    
+    func setHumanizationPreset(_ preset: HumanizationPreset) {
+        selectedPreset = preset
+        playbackEngine?.applyPreset(preset)
+        humanizationEnabled = preset != .robotic
+    }
+    
+    func toggleHumanization() {
+        humanizationEnabled.toggle()
+        if humanizationEnabled {
+            playbackEngine?.applyPreset(selectedPreset)
+        } else {
+            playbackEngine?.applyPreset(.robotic)
+        }
+    }
+    
+    var availablePatterns: [RhythmPattern] {
+        RhythmPatternLibrary.shared.getPatterns(for: selectedStyle)
+    }
+    
+    var availableStyles: [MusicStyle] {
+        MusicStyle.allCases
+    }
+    
+    var availablePresets: [HumanizationPreset] {
+        HumanizationPreset.allCases
     }
     
     // Initialize audio

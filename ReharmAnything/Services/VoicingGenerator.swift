@@ -575,48 +575,51 @@ class VoicingGenerator {
     
     // MARK: - Generate Diminished Stack Voicing (Polychord)
     
-    /// C7 -> C + A (or C- + A-) stacked as a single chord voicing
-    /// This is the "diminished principle" polychord, NOT two separate chords in time
+    /// Diminished Stack: Root triad + triad a minor 3rd below root
+    /// C7 -> C triad + A triad (C-E-G + A-C#-E)
+    /// G7 -> G triad + E triad (G-B-D + E-G#-B)
     func generateDiminishedStackVoicing(
         for dominantChord: Chord,
         useMajorTriads: Bool = true
     ) -> Voicing {
         let root = dominantChord.root.pitchClass
         
-        // Lower triad root is minor 3rd below (9 semitones up = A for C)
-        let lowerRoot = (root + 9) % 12
+        // Lower triad root is minor 3rd BELOW root (-3 semitones)
+        // C -> A, G -> E, D -> B, etc.
+        let lowerTriadRoot = (root - 3 + 12) % 12
         
-        // Build the polychord voicing
-        // Left hand: Root of dominant + lower triad
-        // Right hand: Upper triad + extensions
+        // Calculate base octaves
+        let lhBase = 48  // C3 area for left hand
+        let rhBase = 60  // C4 area for right hand
         
         let leftHandNotes: [MIDINote]
         let rightHandNotes: [MIDINote]
         
         if useMajorTriads {
-            // C major + A major = C E G + A C# E
-            // Voiced as: LH: C, A | RH: E, G, C#, E (or G#, B for A triad upper structure)
+            // C major (C-E-G) + A major (A-C#-E)
+            // LH: Lower triad (A) in bass register
+            // RH: Root triad (C) in treble register
             leftHandNotes = [
-                leftHandCenter + root,           // C (root)
-                leftHandCenter + lowerRoot,      // A (lower triad root)
+                lhBase + lowerTriadRoot,         // A (lower triad root)
+                lhBase + lowerTriadRoot + 4,     // C# (3rd of A)
+                lhBase + lowerTriadRoot + 7,     // E (5th of A)
             ]
             rightHandNotes = [
-                rightHandCenter + root + 4,      // E (3rd of C)
-                rightHandCenter + root + 7,      // G (5th of C)  
-                rightHandCenter + lowerRoot + 4, // C# (3rd of A)
-                rightHandCenter + root + 12,     // C (octave)
+                rhBase + root,                   // C (root triad root)
+                rhBase + root + 4,               // E (3rd of C)
+                rhBase + root + 7,               // G (5th of C)
             ]
         } else {
-            // C minor + A minor = C Eb G + A C E
+            // C minor (C-Eb-G) + A minor (A-C-E)
             leftHandNotes = [
-                leftHandCenter + root,           // C
-                leftHandCenter + lowerRoot,      // A
+                lhBase + lowerTriadRoot,         // A
+                lhBase + lowerTriadRoot + 3,     // C (b3 of A)
+                lhBase + lowerTriadRoot + 7,     // E (5th of A)
             ]
             rightHandNotes = [
-                rightHandCenter + root + 3,      // Eb (b3 of C)
-                rightHandCenter + root + 7,      // G (5th of C)
-                rightHandCenter + lowerRoot + 3, // C (b3 of A)
-                rightHandCenter + lowerRoot + 7, // E (5th of A)
+                rhBase + root,                   // C
+                rhBase + root + 3,               // Eb (b3 of C)
+                rhBase + root + 7,               // G (5th of C)
             ]
         }
         

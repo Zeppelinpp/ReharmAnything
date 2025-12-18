@@ -43,6 +43,9 @@ struct ReharmView: View {
                     // Reharm controls
                     reharmControlsSection
                     
+                    // Humanization / Feel controls
+                    humanizationSection
+                    
                     // Settings
                     settingsSection
                 }
@@ -123,14 +126,8 @@ struct ReharmView: View {
             }
         }
         .padding(16)
-        .background(
-            RoundedRectangle(cornerRadius: 14)
-                .fill(NordicTheme.Dynamic.surface(colorScheme))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 14)
-                .stroke(NordicTheme.Dynamic.border(colorScheme), lineWidth: 0.5)
-        )
+        .background(NordicTheme.Dynamic.surface(colorScheme))
+        .cornerRadius(12)
     }
     
     private func isChordPlaying(at index: Int, in progression: ChordProgression) -> Bool {
@@ -172,13 +169,11 @@ struct ReharmView: View {
                 .id(chordIndex) // Force redraw when chord changes
         }
         .padding(16)
-        .background(
-            RoundedRectangle(cornerRadius: 14)
-                .fill(NordicTheme.Dynamic.surface(colorScheme))
-        )
+        .background(NordicTheme.Dynamic.surface(colorScheme))
+        .cornerRadius(12)
         .overlay(
-            RoundedRectangle(cornerRadius: 14)
-                .stroke(viewModel.isPlaying ? NordicTheme.Colors.primary.opacity(0.5) : NordicTheme.Dynamic.border(colorScheme), lineWidth: viewModel.isPlaying ? 1 : 0.5)
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(viewModel.isPlaying ? NordicTheme.Colors.primary.opacity(0.4) : Color.clear, lineWidth: 1)
         )
     }
     
@@ -237,14 +232,8 @@ struct ReharmView: View {
             }
         }
         .padding(16)
-        .background(
-            RoundedRectangle(cornerRadius: 14)
-                .fill(NordicTheme.Dynamic.surface(colorScheme))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 14)
-                .stroke(NordicTheme.Dynamic.border(colorScheme), lineWidth: 0.5)
-        )
+        .background(NordicTheme.Dynamic.surface(colorScheme))
+        .cornerRadius(12)
     }
     
     private var settingsSection: some View {
@@ -331,60 +320,184 @@ struct ReharmView: View {
             .tint(NordicTheme.Colors.tertiary)
         }
         .padding(16)
-        .background(
-            RoundedRectangle(cornerRadius: 14)
-                .fill(NordicTheme.Dynamic.surface(colorScheme))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 14)
-                .stroke(NordicTheme.Dynamic.border(colorScheme), lineWidth: 0.5)
-        )
+        .background(NordicTheme.Dynamic.surface(colorScheme))
+        .cornerRadius(12)
+    }
+    
+    // MARK: - Humanization Section
+    
+    private var humanizationSection: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            HStack {
+                Text("Feel & Groove")
+                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+                    .foregroundColor(NordicTheme.Dynamic.textSecondary(colorScheme))
+                    .textCase(.uppercase)
+                    .tracking(0.5)
+                
+                Spacer()
+                
+                // Humanization toggle
+                Toggle("", isOn: Binding(
+                    get: { viewModel.humanizationEnabled },
+                    set: { _ in viewModel.toggleHumanization() }
+                ))
+                .labelsHidden()
+                .tint(NordicTheme.Colors.highlight)
+            }
+            
+            // Style selection
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Style")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(NordicTheme.Dynamic.textSecondary(colorScheme))
+                
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 6) {
+                        ForEach(viewModel.availableStyles) { style in
+                            StyleButton(
+                                title: style.rawValue,
+                                isSelected: viewModel.selectedStyle == style,
+                                colorScheme: colorScheme
+                            ) {
+                                viewModel.setMusicStyle(style)
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // Rhythm pattern selection
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Rhythm Pattern")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(NordicTheme.Dynamic.textSecondary(colorScheme))
+                
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 6) {
+                        // No pattern option (sustained chords)
+                        PatternButton(
+                            title: "Sustained",
+                            subtitle: "Long notes",
+                            isSelected: viewModel.selectedPattern == nil,
+                            colorScheme: colorScheme
+                        ) {
+                            viewModel.setRhythmPattern(nil)
+                        }
+                        
+                        ForEach(viewModel.availablePatterns) { pattern in
+                            PatternButton(
+                                title: pattern.name.replacingOccurrences(of: "\(viewModel.selectedStyle.rawValue) ", with: ""),
+                                subtitle: pattern.description.prefix(20) + (pattern.description.count > 20 ? "..." : ""),
+                                isSelected: viewModel.selectedPattern?.id == pattern.id,
+                                colorScheme: colorScheme
+                            ) {
+                                viewModel.setRhythmPattern(pattern)
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // Humanization preset
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Feel")
+                    .font(.system(size: 12, weight: .medium))
+                    .foregroundColor(NordicTheme.Dynamic.textSecondary(colorScheme))
+                
+                HStack(spacing: 6) {
+                    ForEach(viewModel.availablePresets) { preset in
+                        PresetButton(
+                            title: preset.rawValue,
+                            isSelected: viewModel.selectedPreset == preset,
+                            colorScheme: colorScheme
+                        ) {
+                            viewModel.setHumanizationPreset(preset)
+                        }
+                    }
+                }
+            }
+        }
+        .padding(16)
+        .background(NordicTheme.Dynamic.surface(colorScheme))
+        .cornerRadius(12)
+        .opacity(viewModel.humanizationEnabled ? 1.0 : 0.6)
     }
     
     private var playbackControlsSection: some View {
-        VStack(spacing: 10) {
+        VStack(spacing: 0) {
             // Progress bar
             if let progression = viewModel.activeProgression {
                 GeometryReader { geo in
                     ZStack(alignment: .leading) {
-                        RoundedRectangle(cornerRadius: 2)
+                        Rectangle()
                             .fill(NordicTheme.Dynamic.surfaceSecondary(colorScheme))
                         
-                        RoundedRectangle(cornerRadius: 2)
+                        Rectangle()
                             .fill(NordicTheme.Colors.primary)
                             .frame(width: geo.size.width * (viewModel.currentBeat / max(progression.totalBeats, 1)))
                     }
                 }
-                .frame(height: 3)
+                .frame(height: 2)
             }
             
-            // Controls
-            HStack(spacing: 28) {
+            // Controls - compact inline design
+            HStack(spacing: 20) {
+                // Stop button
                 Button(action: { viewModel.stop() }) {
                     Image(systemName: "stop.fill")
-                        .font(.system(size: 16, weight: .medium))
+                        .font(.system(size: 12, weight: .medium))
                         .foregroundColor(NordicTheme.Dynamic.textSecondary(colorScheme))
+                        .frame(width: 32, height: 32)
+                        .background(
+                            Circle()
+                                .fill(NordicTheme.Dynamic.surfaceSecondary(colorScheme))
+                        )
                 }
                 
+                // Play/Pause button
                 Button(action: { viewModel.togglePlayback() }) {
-                    Image(systemName: viewModel.isPlaying ? "pause.circle.fill" : "play.circle.fill")
-                        .font(.system(size: 48))
-                        .foregroundColor(NordicTheme.Colors.primary)
+                    Image(systemName: viewModel.isPlaying ? "pause.fill" : "play.fill")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundColor(.white)
+                        .frame(width: 44, height: 44)
+                        .background(
+                            Circle()
+                                .fill(viewModel.activeProgression == nil 
+                                    ? NordicTheme.Dynamic.textSecondary(colorScheme)
+                                    : NordicTheme.Colors.primary)
+                        )
                 }
                 .disabled(viewModel.activeProgression == nil)
-                .opacity(viewModel.activeProgression == nil ? 0.4 : 1)
                 
+                // Loop button
                 Button(action: { viewModel.isLooping.toggle() }) {
                     Image(systemName: "repeat")
-                        .font(.system(size: 16, weight: .medium))
+                        .font(.system(size: 12, weight: .medium))
                         .foregroundColor(viewModel.isLooping 
                             ? NordicTheme.Colors.tertiary 
                             : NordicTheme.Dynamic.textSecondary(colorScheme))
+                        .frame(width: 32, height: 32)
+                        .background(
+                            Circle()
+                                .fill(viewModel.isLooping 
+                                    ? NordicTheme.Colors.tertiary.opacity(colorScheme == .dark ? 0.2 : 0.1)
+                                    : NordicTheme.Dynamic.surfaceSecondary(colorScheme))
+                        )
+                }
+                
+                Spacer()
+                
+                // Tempo display
+                if viewModel.activeProgression != nil {
+                    Text("\(Int(viewModel.tempo)) BPM")
+                        .font(.system(size: 11, weight: .medium, design: .monospaced))
+                        .foregroundColor(NordicTheme.Dynamic.textSecondary(colorScheme))
                 }
             }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 12)
         }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 14)
         .background(NordicTheme.Dynamic.surface(colorScheme))
         .overlay(alignment: .top) {
             Rectangle()
@@ -446,11 +559,14 @@ struct ChordCell: View {
     }
     
     private var polychordView: some View {
-        let upperRootPitchClass = (chord.root.pitchClass + 4) % 12
-        let upperRoot = NoteName.from(pitchClass: upperRootPitchClass)
+        // Lower triad is minor 3rd below root (root - 3 semitones)
+        // C7 -> C triad + A triad, display as C/A
+        let lowerRootPitchClass = (chord.root.pitchClass - 3 + 12) % 12
+        let lowerRoot = NoteName.from(pitchClass: lowerRootPitchClass)
         
         return VStack(spacing: 0) {
-            Text(upperRoot.rawValue)
+            // Root triad on top
+            Text(chord.root.rawValue)
                 .font(.system(size: 14, weight: .semibold, design: .rounded))
                 .foregroundColor(NordicTheme.Dynamic.text(colorScheme))
             
@@ -459,7 +575,8 @@ struct ChordCell: View {
                 .frame(width: 24, height: 1)
                 .padding(.vertical, 2)
             
-            Text(chord.root.rawValue)
+            // Lower triad (minor 3rd below root)
+            Text(lowerRoot.rawValue)
                 .font(.system(size: 14, weight: .semibold, design: .rounded))
                 .foregroundColor(NordicTheme.Dynamic.text(colorScheme))
         }
@@ -582,6 +699,100 @@ struct VoicingTypeButton: View {
                 RoundedRectangle(cornerRadius: 8)
                     .stroke(isSelected ? NordicTheme.Colors.tertiary.opacity(0.5) : Color.clear, lineWidth: 1)
             )
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+// Style button for humanization
+struct StyleButton: View {
+    let title: String
+    let isSelected: Bool
+    let colorScheme: ColorScheme
+    let action: () -> Void
+    
+    var body: some View {
+        Button(action: action) {
+            Text(title)
+                .font(.system(size: 11, weight: isSelected ? .semibold : .regular))
+                .padding(.horizontal, 10)
+                .padding(.vertical, 6)
+                .background(
+                    Capsule()
+                        .fill(isSelected 
+                            ? NordicTheme.Colors.highlight 
+                            : NordicTheme.Dynamic.surfaceSecondary(colorScheme))
+                )
+                .foregroundColor(isSelected ? .white : NordicTheme.Dynamic.text(colorScheme))
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+// Pattern button for rhythm patterns
+struct PatternButton: View {
+    let title: String
+    let subtitle: String
+    let isSelected: Bool
+    let colorScheme: ColorScheme
+    let action: () -> Void
+    
+    var body: some View {
+        Button(action: action) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.system(size: 10, weight: isSelected ? .semibold : .medium))
+                    .foregroundColor(isSelected 
+                        ? NordicTheme.Colors.highlight 
+                        : NordicTheme.Dynamic.text(colorScheme))
+                Text(subtitle)
+                    .font(.system(size: 7))
+                    .foregroundColor(NordicTheme.Dynamic.textSecondary(colorScheme))
+                    .lineLimit(1)
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 6)
+            .background(
+                RoundedRectangle(cornerRadius: 6)
+                    .fill(isSelected 
+                        ? NordicTheme.Colors.highlight.opacity(colorScheme == .dark ? 0.2 : 0.1)
+                        : NordicTheme.Dynamic.surfaceSecondary(colorScheme))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 6)
+                    .stroke(isSelected ? NordicTheme.Colors.highlight.opacity(0.5) : Color.clear, lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+// Preset button for humanization presets
+struct PresetButton: View {
+    let title: String
+    let isSelected: Bool
+    let colorScheme: ColorScheme
+    let action: () -> Void
+    
+    var body: some View {
+        Button(action: action) {
+            Text(title)
+                .font(.system(size: 10, weight: isSelected ? .semibold : .regular))
+                .padding(.horizontal, 8)
+                .padding(.vertical, 5)
+                .background(
+                    RoundedRectangle(cornerRadius: 5)
+                        .fill(isSelected 
+                            ? NordicTheme.Colors.primary.opacity(colorScheme == .dark ? 0.25 : 0.15)
+                            : NordicTheme.Dynamic.surfaceSecondary(colorScheme))
+                )
+                .foregroundColor(isSelected 
+                    ? NordicTheme.Colors.primary 
+                    : NordicTheme.Dynamic.text(colorScheme))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 5)
+                        .stroke(isSelected ? NordicTheme.Colors.primary.opacity(0.4) : Color.clear, lineWidth: 1)
+                )
         }
         .buttonStyle(.plain)
     }

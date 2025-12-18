@@ -55,6 +55,9 @@ class SharedAudioEngine: ObservableObject {
     func initialize() {
         guard audioEngine == nil else { return }
         
+        // Configure audio session for speaker playback
+        configureAudioSession()
+        
         audioEngine = AVAudioEngine()
         sampler = AVAudioUnitSampler()
         
@@ -70,6 +73,19 @@ class SharedAudioEngine: ObservableObject {
         } catch {
             loadError = error.localizedDescription
         }
+    }
+    
+    private func configureAudioSession() {
+        #if os(iOS)
+        do {
+            let session = AVAudioSession.sharedInstance()
+            // Use playback category to enable speaker output
+            try session.setCategory(.playback, mode: .default, options: [.mixWithOthers])
+            try session.setActive(true)
+        } catch {
+            print("Failed to configure audio session: \(error)")
+        }
+        #endif
     }
     
     // Load specific SF2 file for the selected sound type
