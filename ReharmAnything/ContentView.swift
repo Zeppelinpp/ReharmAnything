@@ -34,6 +34,7 @@ struct ContentView: View {
                     customTabBar
                 }
             }
+            .ignoresSafeArea(isZenMode ? .container : [], edges: .bottom)
         }
         .task {
             if !isInitialized {
