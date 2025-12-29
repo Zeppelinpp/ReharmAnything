@@ -128,9 +128,9 @@ enum MusicStyle: String, CaseIterable, Identifiable {
                 velocityJitter: 12,
                 durationJitter: 0.06,
                 legato: 0.98,
+                accentPattern: [1.0, 0.5, 0.7, 0.5],
                 rollChords: true,
-                rollSpeed: 0.03,
-                accentPattern: [1.0, 0.5, 0.7, 0.5]
+                rollSpeed: 0.03
             )
         case .latin:
             return HumanizerConfig(
@@ -155,9 +155,9 @@ enum MusicStyle: String, CaseIterable, Identifiable {
                 velocityJitter: 15,
                 durationJitter: 0.05,
                 legato: 0.93,
+                accentPattern: [1.0, 0.6, 0.9, 0.65],
                 rollChords: true,
-                rollSpeed: 0.04,
-                accentPattern: [1.0, 0.6, 0.9, 0.65]
+                rollSpeed: 0.04
             )
         case .stride:
             return HumanizerConfig(
@@ -165,8 +165,8 @@ enum MusicStyle: String, CaseIterable, Identifiable {
                 velocityJitter: 8,
                 durationJitter: 0.03,
                 legato: 0.8,
-                handSeparation: 0.02,
-                accentPattern: [1.0, 0.5, 0.85, 0.5]
+                accentPattern: [1.0, 0.5, 0.85, 0.5],
+                handSeparation: 0.02
             )
         }
     }
@@ -175,7 +175,6 @@ enum MusicStyle: String, CaseIterable, Identifiable {
 // MARK: - Rhythm Pattern Library
 
 /// Library of rhythm patterns organized by style
-/// Simplified to basic whole-note chord per bar pattern
 class RhythmPatternLibrary {
     
     static let shared = RhythmPatternLibrary()
@@ -187,15 +186,15 @@ class RhythmPatternLibrary {
     }
     
     private func loadAllPatterns() {
-        // All styles use the same basic whole-note pattern
-        let basicPattern = wholeNotePattern
-        patterns[.swing] = [basicPattern(for: .swing)]
-        patterns[.bossa] = [basicPattern(for: .bossa)]
-        patterns[.ballad] = [basicPattern(for: .ballad)]
-        patterns[.latin] = [basicPattern(for: .latin)]
-        patterns[.funk] = [basicPattern(for: .funk)]
-        patterns[.gospel] = [basicPattern(for: .gospel)]
-        patterns[.stride] = [basicPattern(for: .stride)]
+        // Load patterns for each style
+        for style in MusicStyle.allCases {
+            patterns[style] = [
+                wholeNotePattern(for: style),
+                syncopatedPattern(for: style),
+                quarterNotePattern(for: style),
+                halfNotePattern(for: style)
+            ]
+        }
     }
     
     func getPatterns(for style: MusicStyle) -> [RhythmPattern] {
@@ -211,7 +210,9 @@ class RhythmPatternLibrary {
         return nil
     }
     
-    // Basic whole-note pattern: one chord per bar
+    // MARK: - Basic Patterns
+    
+    /// Basic whole-note pattern: one chord per bar
     private func wholeNotePattern(for style: MusicStyle) -> RhythmPattern {
         RhythmPattern(
             name: "Whole Note",
@@ -224,6 +225,67 @@ class RhythmPatternLibrary {
             description: "One chord per bar"
         )
     }
+    
+    // MARK: - Syncopated Pattern (Beat 1 upbeat + Beat 3)
+    
+    /// Syncopated pattern: 8th note #2 + beat 3
+    /// In 4/4: eighth notes at positions 1, 2, 3, 4, 5, 6, 7, 8 (0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0, 3.5 beats)
+    /// Hit #2 (position 0.5): duration = 0.5 beats (one eighth note)
+    /// Hit #5 (position 2.0, beat 3): duration = 1.0 beat (one quarter note)
+    private func syncopatedPattern(for style: MusicStyle) -> RhythmPattern {
+        let swingFactor: Double = (style == .swing || style == .gospel) ? 0.17 : 0.0
+        
+        return RhythmPattern(
+            name: "Syncopated",
+            style: style,
+            lengthInBeats: 4,
+            hits: [
+                // 8th note #2 (position 0.5), duration = 0.5 (one eighth note)
+                RhythmHit(0.5, velocity: 0.75, type: .fullChord, duration: 0.5),
+                // 8th note #5 / beat 3 (position 2.0), duration = 1.0 (one quarter note)
+                RhythmHit(2.0, velocity: 0.85, type: .fullChord, duration: 1.0)
+            ],
+            swingFactor: swingFactor,
+            description: "Syncopated: 8th #2 + beat 3"
+        )
+    }
+    
+    // MARK: - Quarter Note Pattern (On-beat)
+    
+    /// Quarter note pattern: play on every beat (for dense chord changes)
+    private func quarterNotePattern(for style: MusicStyle) -> RhythmPattern {
+        RhythmPattern(
+            name: "Quarter Note",
+            style: style,
+            lengthInBeats: 4,
+            hits: [
+                RhythmHit(0.0, velocity: 0.85, type: .fullChord, duration: 1.0),
+                RhythmHit(1.0, velocity: 0.70, type: .fullChord, duration: 1.0),
+                RhythmHit(2.0, velocity: 0.80, type: .fullChord, duration: 1.0),
+                RhythmHit(3.0, velocity: 0.70, type: .fullChord, duration: 1.0)
+            ],
+            swingFactor: 0,
+            description: "On-beat: every quarter note"
+        )
+    }
+    
+    // MARK: - Half Note Pattern (2 chords per bar)
+    
+    /// Half note pattern: play on beats 1 and 3
+    private func halfNotePattern(for style: MusicStyle) -> RhythmPattern {
+        RhythmPattern(
+            name: "Half Note",
+            style: style,
+            lengthInBeats: 4,
+            hits: [
+                RhythmHit(0.0, velocity: 0.85, type: .fullChord, duration: 2.0),
+                RhythmHit(2.0, velocity: 0.80, type: .fullChord, duration: 2.0)
+            ],
+            swingFactor: 0,
+            description: "Half notes: beats 1 and 3"
+        )
+    }
+    
 }
 
 // MARK: - Pattern Selector Helper

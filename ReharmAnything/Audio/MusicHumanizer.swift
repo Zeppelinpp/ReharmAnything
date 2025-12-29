@@ -183,29 +183,43 @@ class MusicHumanizer {
     // MARK: - Apply to Chord Progression
     
     /// Generate humanized note events from a chord progression and voicings
+    /// Uses adaptive pattern selection based on chord density per measure
     func generateNoteEvents(
         from progression: ChordProgression,
         voicings: [Voicing],
         pattern: RhythmPattern? = nil
     ) -> [NoteEvent] {
         var allNotes: [NoteEvent] = []
+        let beatsPerMeasure = progression.timeSignature.beatsPerMeasure
+        
+        // Group events by measure for density analysis
+        let measureChordCounts = analyzeMeasureDensity(events: progression.events, beatsPerMeasure: beatsPerMeasure)
         
         for (index, event) in progression.events.enumerated() {
             guard index < voicings.count else { continue }
             
             let voicing = voicings[index]
+            let measureNumber = Int(floor(event.startBeat / beatsPerMeasure)) + 1
+            let chordsInMeasure = measureChordCounts[measureNumber] ?? 1
             
-            if let pattern = pattern {
-                // Apply rhythm pattern
+            // Select pattern based on chord density
+            let selectedPattern = selectPatternForDensity(
+                chordsInMeasure: chordsInMeasure,
+                chordDuration: event.duration,
+                beatsPerMeasure: beatsPerMeasure,
+                fallbackPattern: pattern
+            )
+            
+            if let pat = selectedPattern {
                 let patternNotes = applyRhythmPattern(
-                    pattern: pattern,
+                    pattern: pat,
                     to: voicing,
                     startBeat: event.startBeat,
                     duration: event.duration
                 )
                 allNotes.append(contentsOf: humanize(notes: patternNotes, startBeat: event.startBeat))
             } else {
-                // Simple sustained chord
+                // No pattern: play chord at start beat with full duration
                 let voicingEvent = VoicingEvent(voicing: voicing, startBeat: event.startBeat, duration: event.duration)
                 allNotes.append(contentsOf: humanize(voicingEvent: voicingEvent))
             }
@@ -214,9 +228,50 @@ class MusicHumanizer {
         return allNotes
     }
     
+    /// Analyze how many chords are in each measure
+    private func analyzeMeasureDensity(events: [ChordEvent], beatsPerMeasure: Double) -> [Int: Int] {
+        var counts: [Int: Int] = [:]
+        for event in events {
+            let measureNumber = Int(floor(event.startBeat / beatsPerMeasure)) + 1
+            counts[measureNumber, default: 0] += 1
+        }
+        return counts
+    }
+    
+    /// Select appropriate pattern based on chord density
+    private func selectPatternForDensity(
+        chordsInMeasure: Int,
+        chordDuration: Double,
+        beatsPerMeasure: Double,
+        fallbackPattern: RhythmPattern?
+    ) -> RhythmPattern? {
+        let library = RhythmPatternLibrary.shared
+        
+        // 4 chords per measure (one per beat): play on-beat, no pattern needed
+        if chordsInMeasure >= 4 || chordDuration <= 1.0 {
+            return nil  // Play exactly at chord's startBeat
+        }
+        
+        // 2 chords per measure: use syncopated pattern
+        if chordsInMeasure == 2 || abs(chordDuration - 2.0) < 0.1 {
+            return library.getPattern(named: "Syncopated")
+        }
+        
+        // 1 chord per measure (whole bar): randomly choose whole note or syncopated
+        if chordsInMeasure == 1 || chordDuration >= beatsPerMeasure - 0.1 {
+            let patterns = [
+                library.getPattern(named: "Whole Note"),
+                library.getPattern(named: "Syncopated")
+            ].compactMap { $0 }
+            return patterns.randomElement() ?? fallbackPattern
+        }
+        
+        return fallbackPattern
+    }
+    
     // MARK: - Rhythm Pattern Application
     
-    /// Apply a rhythm pattern to a voicing
+    /// Apply a rhythm pattern to a voicing with grid-aligned timing
     func applyRhythmPattern(
         pattern: RhythmPattern,
         to voicing: Voicing,
@@ -224,52 +279,46 @@ class MusicHumanizer {
         duration: Double
     ) -> [NoteEvent] {
         var notes: [NoteEvent] = []
-        var currentBeat = startBeat
         let endBeat = startBeat + duration
         
-        var patternIndex = 0
+        // Align pattern to the grid (absolute timing)
+        // This ensures the pattern stays consistent across chord changes
+        var currentPatternBase = floor(startBeat / pattern.lengthInBeats) * pattern.lengthInBeats
         
-        while currentBeat < endBeat {
-            let hit = pattern.hits[patternIndex % pattern.hits.count]
-            
-            // Calculate how long this note should be
-            let nextHitIndex = (patternIndex + 1) % pattern.hits.count
-            let nextHitPosition = pattern.hits[nextHitIndex].position
-            let currentHitPosition = hit.position
-            
-            var noteDuration: Double
-            if nextHitIndex == 0 {
-                // Wrap around to pattern start
-                noteDuration = (pattern.lengthInBeats - currentHitPosition + nextHitPosition)
-            } else {
-                noteDuration = nextHitPosition - currentHitPosition
+        while currentPatternBase < endBeat {
+            for (index, hit) in pattern.hits.enumerated() {
+                let hitPosition = currentPatternBase + hit.position
+                
+                // Only process hits that fall within the chord's duration
+                if hitPosition >= startBeat && hitPosition < endBeat {
+                    // Calculate duration: use explicit duration if provided,
+                    // otherwise calculate distance to next hit
+                    let noteDuration: Double
+                    if let explicitDuration = hit.duration {
+                        noteDuration = min(explicitDuration, endBeat - hitPosition)
+                    } else {
+                        let nextHitIndex = (index + 1) % pattern.hits.count
+                        let nextPos: Double
+                        if nextHitIndex == 0 {
+                            nextPos = pattern.lengthInBeats + pattern.hits[0].position
+                        } else {
+                            nextPos = pattern.hits[nextHitIndex].position
+                        }
+                        noteDuration = min(nextPos - hit.position, endBeat - hitPosition)
+                    }
+                    
+                    if noteDuration > 0 {
+                        let hitNotes = generateHitNotes(
+                            voicing: voicing,
+                            hit: hit,
+                            position: hitPosition,
+                            duration: noteDuration
+                        )
+                        notes.append(contentsOf: hitNotes)
+                    }
+                }
             }
-            
-            // Don't exceed the chord duration
-            noteDuration = min(noteDuration, endBeat - currentBeat)
-            
-            // Generate notes for this hit
-            let hitNotes = generateHitNotes(
-                voicing: voicing,
-                hit: hit,
-                position: currentBeat,
-                duration: noteDuration
-            )
-            notes.append(contentsOf: hitNotes)
-            
-            // Move to next hit
-            patternIndex += 1
-            if patternIndex < pattern.hits.count {
-                currentBeat = startBeat + pattern.hits[patternIndex].position
-            } else {
-                // Pattern repeats
-                let patternRepeats = Int((currentBeat - startBeat) / pattern.lengthInBeats) + 1
-                currentBeat = startBeat + Double(patternRepeats) * pattern.lengthInBeats + pattern.hits[0].position
-                patternIndex = 0
-            }
-            
-            // Safety check
-            if currentBeat >= endBeat { break }
+            currentPatternBase += pattern.lengthInBeats
         }
         
         return notes
