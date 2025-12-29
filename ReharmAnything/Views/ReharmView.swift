@@ -10,11 +10,21 @@ struct ReharmView: View {
     private var displayedChordIndex: Int? {
         if viewModel.isPlaying, let progression = viewModel.activeProgression {
             // Find currently playing chord index
+            // Use a small tolerance to handle the start of playback
+            let currentBeat = max(0, viewModel.currentBeat)
             for (index, event) in progression.events.enumerated() {
-                if viewModel.currentBeat >= event.startBeat &&
-                   viewModel.currentBeat < event.startBeat + event.duration {
+                let endBeat = event.startBeat + event.duration
+                // First chord starts at beat 0, so include it even if currentBeat is exactly 0
+                if index == 0 && currentBeat < event.duration {
+                    return 0
+                }
+                if currentBeat >= event.startBeat && currentBeat < endBeat {
                     return index
                 }
+            }
+            // If we're past all events but still playing (near the end), return last chord
+            if !progression.events.isEmpty && currentBeat >= progression.events.last!.startBeat {
+                return progression.events.count - 1
             }
         }
         return selectedChordIndex
@@ -38,17 +48,39 @@ struct ReharmView: View {
     
     // MARK: - Zen Mode Content
     
+    /// Get the current playing measure number for auto-scrolling
+    private var currentPlayingMeasure: Int? {
+        guard viewModel.isPlaying, let progression = viewModel.activeProgression else { return nil }
+        let beatsPerMeasure = progression.timeSignature.beatsPerMeasure
+        return Int(viewModel.currentBeat / beatsPerMeasure) + 1
+    }
+    
+    /// Get the row index (0-based) for a given measure number
+    private func rowIndex(forMeasure measure: Int) -> Int {
+        return (measure - 1) / 4  // 4 measures per row
+    }
+    
     private var zenModeContent: some View {
         // Full screen chord chart and piano (no header)
         GeometryReader { geometry in
             VStack(spacing: 0) {
-                // Chord progression - takes most of the space
+                // Chord progression - takes most of the space with auto-scroll
                 if let progression = viewModel.activeProgression {
-                    ScrollView {
-                        progressionSection(progression)
-                            .id(progression.id)
-                            .padding(.horizontal, 16)
-                            .padding(.vertical, 12)
+                    ScrollViewReader { proxy in
+                        ScrollView {
+                            zenModeChordChart(progression)
+                                .id(progression.id)
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 12)
+                        }
+                        .onChange(of: currentPlayingMeasure) { _, newMeasure in
+                            if let measure = newMeasure {
+                                let row = rowIndex(forMeasure: measure)
+                                withAnimation(.easeInOut(duration: 0.3)) {
+                                    proxy.scrollTo("row-\(row)", anchor: .center)
+                                }
+                            }
+                        }
                     }
                     .frame(height: geometry.size.height * 0.55)
                 } else {
@@ -73,42 +105,112 @@ struct ReharmView: View {
         }
     }
     
-    private func zenModePianoSection(voicing: Voicing, chordIndex: Int) -> some View {
-        VStack(spacing: 12) {
-            // Chord name and voicing info
-            VStack(spacing: 4) {
-                Text(voicing.chord.displayName)
-                    .font(.system(size: 28, weight: .bold, design: .serif))
-                    .foregroundColor(NordicTheme.Dynamic.text(colorScheme))
-                
-                if let voicingType = voicing.voicingType {
-                    Text(voicingType.rawValue)
-                        .font(.system(size: 13, weight: .medium))
-                        .foregroundColor(NordicTheme.Colors.primary)
+    /// Zen mode chord chart with row IDs for auto-scrolling
+    private func zenModeChordChart(_ progression: ChordProgression) -> some View {
+        let measures = groupChordsIntoMeasures(progression)
+        let rows = measures.chunked(into: 4)  // 4 measures per row
+        
+        return VStack(spacing: 0) {
+            // Metadata row
+            HStack(alignment: .center, spacing: 16) {
+                // Key center
+                VStack(spacing: -2) {
+                    Text("Key")
+                        .font(.system(size: 9, weight: .medium))
+                        .foregroundColor(NordicTheme.Dynamic.textSecondary(colorScheme))
+                    Text(inferKeyCenter(from: progression))
+                        .font(.system(size: 16, weight: .bold, design: .serif))
+                        .foregroundColor(NordicTheme.Dynamic.text(colorScheme))
                 }
                 
-                // Hand separation display
-                let hands = voicing.handsDescription()
-                HStack(spacing: 24) {
-                    VStack(spacing: 2) {
-                        Text("L.H.")
-                            .font(.system(size: 10, weight: .medium))
-                            .foregroundColor(NordicTheme.Dynamic.textSecondary(colorScheme))
-                        Text(hands.left.isEmpty ? "-" : hands.left)
-                            .font(.system(size: 12, weight: .medium, design: .monospaced))
-                            .foregroundColor(NordicTheme.Dynamic.text(colorScheme))
+                // Time signature
+                VStack(spacing: -2) {
+                    Text("\(progression.timeSignature.beats)")
+                        .font(.system(size: 14, weight: .bold, design: .serif))
+                    Text("\(progression.timeSignature.beatType)")
+                        .font(.system(size: 14, weight: .bold, design: .serif))
+                }
+                .foregroundColor(NordicTheme.Dynamic.text(colorScheme))
+                
+                Spacer()
+                
+                // Tempo marking
+                HStack(spacing: 4) {
+                    Image(systemName: "metronome")
+                        .font(.system(size: 12))
+                    Text("♩= \(Int(progression.tempo))")
+                        .font(.system(size: 12, weight: .medium, design: .serif))
+                }
+                .foregroundColor(NordicTheme.Dynamic.textSecondary(colorScheme))
+                
+                // Measure count
+                Text("\(progression.totalMeasures) bars")
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(NordicTheme.Dynamic.textSecondary(colorScheme))
+            }
+            .padding(.horizontal, 8)
+            .padding(.bottom, 8)
+            
+            // Chord chart rows with IDs
+            ForEach(Array(rows.enumerated()), id: \.offset) { rowIndex, row in
+                HStack(spacing: 0) {
+                    ForEach(Array(row.enumerated()), id: \.offset) { measureIndex, measure in
+                        let globalMeasureIndex = rowIndex * 4 + measureIndex
+                        let measureNum = globalMeasureIndex + 1
+                        
+                        // Get section label for this measure
+                        let sectionLabel = progression.sectionLabel(forMeasure: measureNum) 
+                            ?? measure.first?.sectionLabel
+                        
+                        MeasureCell(
+                            measure: measure,
+                            measureNumber: measureNum,
+                            isFirstInRow: measureIndex == 0,
+                            isLastInRow: measureIndex == row.count - 1,
+                            playingChordIndex: currentPlayingChordIndex(in: progression),
+                            selectedChordIndex: selectedChordIndex,
+                            reharmTargets: viewModel.reharmTargets,
+                            colorScheme: colorScheme,
+                            sectionLabel: sectionLabel
+                        ) { chordIndex in
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                selectedChordIndex = (selectedChordIndex == chordIndex) ? nil : chordIndex
+                            }
+                            viewModel.previewChord(at: chordIndex)
+                        }
                     }
-                    VStack(spacing: 2) {
-                        Text("R.H.")
-                            .font(.system(size: 10, weight: .medium))
-                            .foregroundColor(NordicTheme.Dynamic.textSecondary(colorScheme))
-                        Text(hands.right.isEmpty ? "-" : hands.right)
-                            .font(.system(size: 12, weight: .medium, design: .monospaced))
-                            .foregroundColor(NordicTheme.Dynamic.text(colorScheme))
+                    
+                    // Fill empty cells if row is incomplete
+                    if row.count < 4 {
+                        ForEach(0..<(4 - row.count), id: \.self) { _ in
+                            Rectangle()
+                                .fill(Color.clear)
+                                .frame(maxWidth: .infinity)
+                                .aspectRatio(1.2, contentMode: .fit)
+                        }
                     }
+                }
+                .id("row-\(rowIndex)")  // ID for scroll targeting
+                
+                // Row separator (except for last row)
+                if rowIndex < rows.count - 1 {
+                    Rectangle()
+                        .fill(NordicTheme.Dynamic.border(colorScheme))
+                        .frame(height: 0.5)
                 }
             }
-            .padding(.top, 8)
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 12)
+    }
+    
+    private func zenModePianoSection(voicing: Voicing, chordIndex: Int) -> some View {
+        VStack(spacing: 12) {
+            // Chord name only (simplified)
+            Text(voicing.chord.displayName)
+                .font(.system(size: 28, weight: .bold, design: .serif))
+                .foregroundColor(NordicTheme.Dynamic.text(colorScheme))
+                .padding(.top, 12)
             
             // Large piano keyboard
             PianoKeyboardView(highlightedNotes: Set(voicing.notes), colorScheme: colorScheme)
