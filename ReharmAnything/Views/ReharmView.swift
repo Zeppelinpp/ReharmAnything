@@ -29,6 +29,11 @@ struct ReharmView: View {
                     // Chord progression display
                     if let progression = viewModel.activeProgression {
                         progressionSection(progression)
+                            .id(progression.id)  // Force refresh when progression changes
+                            .onChange(of: progression.id) { _, _ in
+                                // Reset selection when progression changes
+                                selectedChordIndex = nil
+                            }
                     }
                     
                     // Piano keyboard for voicing visualization
@@ -65,6 +70,22 @@ struct ReharmView: View {
                 .font(.system(size: 20, weight: .semibold, design: .rounded))
                 .foregroundColor(NordicTheme.Dynamic.text(colorScheme))
             
+            // Show style and composer if available
+            if let progression = viewModel.activeProgression {
+                HStack(spacing: 8) {
+                    if let style = progression.style {
+                        Text("(\(style))")
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(NordicTheme.Dynamic.textSecondary(colorScheme))
+                    }
+                    if let composer = progression.composer {
+                        Text(composer)
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(NordicTheme.Dynamic.textSecondary(colorScheme))
+                    }
+                }
+            }
+            
             if viewModel.reharmedProgression != nil {
                 HStack(spacing: 5) {
                     Circle()
@@ -87,47 +108,186 @@ struct ReharmView: View {
     }
     
     private func progressionSection(_ progression: ChordProgression) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack {
-                Text("Progression")
-                    .font(.system(size: 13, weight: .semibold, design: .rounded))
+        VStack(alignment: .leading, spacing: 0) {
+            // Sheet music style header
+            sheetMusicHeader(progression)
+            
+            // Chord chart with measure bars
+            chordChartView(progression)
+        }
+        .background(NordicTheme.Dynamic.surface(colorScheme))
+        .cornerRadius(12)
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(NordicTheme.Dynamic.border(colorScheme), lineWidth: 0.5)
+        )
+    }
+    
+    /// Sheet music style header with key and tempo
+    private func sheetMusicHeader(_ progression: ChordProgression) -> some View {
+        HStack(alignment: .bottom, spacing: 16) {
+            // Key center (inferred from first chord or default to C)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Key")
+                    .font(.system(size: 9, weight: .medium))
                     .foregroundColor(NordicTheme.Dynamic.textSecondary(colorScheme))
-                    .textCase(.uppercase)
-                    .tracking(0.5)
-                
-                Spacer()
-                
-                Text("\(progression.events.count) chords")
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundColor(NordicTheme.Dynamic.textSecondary(colorScheme))
+                Text(inferKeyCenter(from: progression))
+                    .font(.system(size: 16, weight: .bold, design: .serif))
+                    .foregroundColor(NordicTheme.Dynamic.text(colorScheme))
             }
             
-            // Chord grid
-            LazyVGrid(columns: [
-                GridItem(.flexible(), spacing: 10),
-                GridItem(.flexible(), spacing: 10),
-                GridItem(.flexible(), spacing: 10),
-                GridItem(.flexible(), spacing: 10)
-            ], spacing: 10) {
-                ForEach(Array(progression.events.enumerated()), id: \.element.id) { index, event in
-                    ChordCell(
-                        chord: event.chord,
-                        isReharmTarget: viewModel.reharmTargets.contains(index),
-                        isPlaying: isChordPlaying(at: index, in: progression),
-                        isSelected: selectedChordIndex == index,
-                        colorScheme: colorScheme
-                    ) {
-                        withAnimation(.easeInOut(duration: 0.2)) {
-                            selectedChordIndex = (selectedChordIndex == index) ? nil : index
+            // Time signature
+            VStack(spacing: -2) {
+                Text("\(progression.timeSignature.beats)")
+                    .font(.system(size: 14, weight: .bold, design: .serif))
+                Text("\(progression.timeSignature.beatType)")
+                    .font(.system(size: 14, weight: .bold, design: .serif))
+            }
+            .foregroundColor(NordicTheme.Dynamic.text(colorScheme))
+            
+            Spacer()
+            
+            // Tempo marking
+            HStack(spacing: 4) {
+                Image(systemName: "metronome")
+                    .font(.system(size: 12))
+                Text("♩= \(Int(progression.tempo))")
+                    .font(.system(size: 13, weight: .medium, design: .serif))
+            }
+            .foregroundColor(NordicTheme.Dynamic.textSecondary(colorScheme))
+            
+            // Measure count
+            Text("\(progression.totalMeasures) bars")
+                .font(.system(size: 11, weight: .medium))
+                .foregroundColor(NordicTheme.Dynamic.textSecondary(colorScheme))
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .background(NordicTheme.Dynamic.surfaceSecondary(colorScheme))
+    }
+    
+    /// Infer key center from progression
+    private func inferKeyCenter(from progression: ChordProgression) -> String {
+        // Simple heuristic: use the root of the last chord (often the tonic)
+        // or the first major/major7 chord
+        if let lastEvent = progression.events.last {
+            return lastEvent.chord.root.rawValue
+        }
+        return "C"
+    }
+    
+    /// Chord chart with measure bars, 4 measures per row
+    private func chordChartView(_ progression: ChordProgression) -> some View {
+        let measures = groupChordsIntoMeasures(progression)
+        let rows = measures.chunked(into: 4)  // 4 measures per row
+        
+        return VStack(spacing: 0) {
+            ForEach(Array(rows.enumerated()), id: \.offset) { rowIndex, row in
+                HStack(spacing: 0) {
+                    ForEach(Array(row.enumerated()), id: \.offset) { measureIndex, measure in
+                        let globalMeasureIndex = rowIndex * 4 + measureIndex
+                        let measureNum = globalMeasureIndex + 1
+                        
+                        // Get section label for this measure
+                        let sectionLabel = progression.sectionLabel(forMeasure: measureNum) 
+                            ?? measure.first?.sectionLabel
+                        
+                        MeasureCell(
+                            measure: measure,
+                            measureNumber: measureNum,
+                            isFirstInRow: measureIndex == 0,
+                            isLastInRow: measureIndex == row.count - 1,
+                            playingChordIndex: currentPlayingChordIndex(in: progression),
+                            selectedChordIndex: selectedChordIndex,
+                            reharmTargets: viewModel.reharmTargets,
+                            colorScheme: colorScheme,
+                            sectionLabel: sectionLabel
+                        ) { chordIndex in
+                            withAnimation(.easeInOut(duration: 0.2)) {
+                                selectedChordIndex = (selectedChordIndex == chordIndex) ? nil : chordIndex
+                            }
+                            viewModel.previewChord(at: chordIndex)
                         }
-                        viewModel.previewChord(at: index)
                     }
+                    
+                    // Fill empty cells if row is incomplete
+                    if row.count < 4 {
+                        ForEach(0..<(4 - row.count), id: \.self) { _ in
+                            Rectangle()
+                                .fill(Color.clear)
+                                .frame(maxWidth: .infinity)
+                                .aspectRatio(1.2, contentMode: .fit)
+                        }
+                    }
+                }
+                
+                // Row separator (except for last row)
+                if rowIndex < rows.count - 1 {
+                    Rectangle()
+                        .fill(NordicTheme.Dynamic.border(colorScheme))
+                        .frame(height: 0.5)
                 }
             }
         }
-        .padding(16)
-        .background(NordicTheme.Dynamic.surface(colorScheme))
-        .cornerRadius(12)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 12)
+    }
+    
+    /// Group chord events into measures
+    private func groupChordsIntoMeasures(_ progression: ChordProgression) -> [[MeasureChord]] {
+        var measures: [[MeasureChord]] = []
+        let beatsPerMeasure = progression.timeSignature.beatsPerMeasure
+        
+        var currentMeasure: [MeasureChord] = []
+        var currentMeasureStart: Double = 0
+        
+        for (index, event) in progression.events.enumerated() {
+            let measureIndex = Int(event.startBeat / beatsPerMeasure)
+            let expectedMeasureStart = Double(measureIndex) * beatsPerMeasure
+            
+            // If we've moved to a new measure, save the current one
+            while currentMeasureStart < expectedMeasureStart {
+                if !currentMeasure.isEmpty {
+                    measures.append(currentMeasure)
+                    currentMeasure = []
+                } else {
+                    // Empty measure
+                    measures.append([])
+                }
+                currentMeasureStart += beatsPerMeasure
+            }
+            
+            // Calculate position within measure (in beats)
+            let positionInMeasure = event.startBeat - currentMeasureStart
+            let durationInMeasure = min(event.duration, beatsPerMeasure - positionInMeasure)
+            
+            currentMeasure.append(MeasureChord(
+                chord: event.chord,
+                globalIndex: index,
+                positionInMeasure: positionInMeasure,
+                duration: durationInMeasure,
+                sectionLabel: event.sectionLabel
+            ))
+        }
+        
+        // Add final measure
+        if !currentMeasure.isEmpty {
+            measures.append(currentMeasure)
+        }
+        
+        return measures
+    }
+    
+    /// Get currently playing chord index
+    private func currentPlayingChordIndex(in progression: ChordProgression) -> Int? {
+        guard viewModel.isPlaying else { return nil }
+        for (index, event) in progression.events.enumerated() {
+            if viewModel.currentBeat >= event.startBeat &&
+               viewModel.currentBeat < event.startBeat + event.duration {
+                return index
+            }
+        }
+        return nil
     }
     
     private func isChordPlaying(at index: Int, in progression: ChordProgression) -> Bool {
@@ -486,6 +646,22 @@ struct ReharmView: View {
                         )
                 }
                 
+                // Click track button
+                Button(action: { viewModel.toggleClick() }) {
+                    Image(systemName: "metronome")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(viewModel.clickEnabled 
+                            ? NordicTheme.Colors.highlight 
+                            : NordicTheme.Dynamic.textSecondary(colorScheme))
+                        .frame(width: 32, height: 32)
+                        .background(
+                            Circle()
+                                .fill(viewModel.clickEnabled 
+                                    ? NordicTheme.Colors.highlight.opacity(colorScheme == .dark ? 0.2 : 0.1)
+                                    : NordicTheme.Dynamic.surfaceSecondary(colorScheme))
+                        )
+                }
+                
                 Spacer()
                 
                 // Tempo display
@@ -503,6 +679,214 @@ struct ReharmView: View {
             Rectangle()
                 .fill(NordicTheme.Dynamic.border(colorScheme))
                 .frame(height: 0.5)
+        }
+    }
+}
+
+// MARK: - Measure Data
+
+/// Chord within a measure
+struct MeasureChord: Identifiable {
+    var id: String {
+        // Unique ID based on chord content, position, and extensions
+        let extStr = chord.extensions.joined(separator: ",")
+        return "\(globalIndex)-\(chord.root.rawValue)-\(chord.quality.rawValue)-\(extStr)"
+    }
+    let chord: Chord
+    let globalIndex: Int
+    let positionInMeasure: Double  // Position in beats from measure start
+    let duration: Double           // Duration in beats
+    var sectionLabel: String?      // Section marker (A, B, C, etc.)
+}
+
+// MARK: - Measure Cell View
+
+/// A single measure cell with bar lines
+struct MeasureCell: View {
+    let measure: [MeasureChord]
+    let measureNumber: Int
+    let isFirstInRow: Bool
+    let isLastInRow: Bool
+    let playingChordIndex: Int?
+    let selectedChordIndex: Int?
+    let reharmTargets: [Int]
+    let colorScheme: ColorScheme
+    var sectionLabel: String?  // Section marker for this measure
+    let onChordTap: (Int) -> Void
+    
+    var body: some View {
+        HStack(spacing: 0) {
+            // Left bar line (thick for first measure in row)
+            Rectangle()
+                .fill(NordicTheme.Dynamic.text(colorScheme))
+                .frame(width: isFirstInRow ? 2 : 1)
+            
+            // Measure content
+            VStack(spacing: 4) {
+                // Section label and measure number row
+                HStack(alignment: .top, spacing: 4) {
+                    // Section label (A, B, C, etc.)
+                    if let label = sectionLabel {
+                        Text(label)
+                            .font(.system(size: 12, weight: .bold, design: .rounded))
+                            .foregroundColor(.white)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 2)
+                            .background(
+                                RoundedRectangle(cornerRadius: 4)
+                                    .fill(NordicTheme.Colors.primary)
+                            )
+                    }
+                    
+                    // Measure number (small, top-left)
+                    Text("\(measureNumber)")
+                        .font(.system(size: 8, weight: .medium))
+                        .foregroundColor(NordicTheme.Dynamic.textSecondary(colorScheme))
+                    
+                    Spacer()
+                }
+                
+                // Chords in measure
+                if measure.isEmpty {
+                    // Empty measure - show rest or repeat
+                    Text("%")
+                        .font(.system(size: 20, weight: .light, design: .serif))
+                        .foregroundColor(NordicTheme.Dynamic.textSecondary(colorScheme))
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                } else if measure.count == 1 {
+                    // Single chord - centered
+                    singleChordView(measure[0])
+                        .id(measure[0].id)  // Force refresh when chord changes
+                } else {
+                    // Multiple chords - split horizontally
+                    HStack(spacing: 2) {
+                        ForEach(measure) { measureChord in
+                            chordInMeasureView(measureChord)
+                                .id(measureChord.id)  // Force refresh when chord changes
+                        }
+                    }
+                }
+            }
+            .padding(.horizontal, 6)
+            .padding(.vertical, 4)
+            .frame(maxWidth: .infinity)
+            .aspectRatio(1.2, contentMode: .fit)
+            
+            // Right bar line (thick for last measure in row)
+            Rectangle()
+                .fill(NordicTheme.Dynamic.text(colorScheme))
+                .frame(width: isLastInRow ? 2 : 1)
+        }
+    }
+    
+    private func singleChordView(_ measureChord: MeasureChord) -> some View {
+        let isPlaying = playingChordIndex == measureChord.globalIndex
+        let isSelected = selectedChordIndex == measureChord.globalIndex
+        let isTarget = reharmTargets.contains(measureChord.globalIndex)
+        let isPolychord = measureChord.chord.extensions.contains("dimStack") && measureChord.chord.quality.isDominant
+        
+        return Button(action: { onChordTap(measureChord.globalIndex) }) {
+            Group {
+                if isPolychord {
+                    // Polychord display: Root triad over lower triad (minor 3rd below)
+                    let lowerRootPitchClass = (measureChord.chord.root.pitchClass - 3 + 12) % 12
+                    let lowerRoot = NoteName.from(pitchClass: lowerRootPitchClass)
+                    
+                    VStack(spacing: 0) {
+                        Text(measureChord.chord.root.rawValue)
+                            .font(.system(size: 14, weight: .semibold, design: .rounded))
+                        Rectangle()
+                            .fill(chordTextColor(isPlaying: isPlaying, isSelected: isSelected, isTarget: isTarget).opacity(0.5))
+                            .frame(width: 20, height: 1)
+                            .padding(.vertical, 1)
+                        Text(lowerRoot.rawValue)
+                            .font(.system(size: 14, weight: .semibold, design: .rounded))
+                    }
+                } else {
+                    VStack(spacing: 1) {
+                        Text(measureChord.chord.root.rawValue)
+                            .font(.system(size: 18, weight: .semibold, design: .rounded))
+                        Text(measureChord.chord.quality.rawValue.isEmpty ? "" : measureChord.chord.quality.rawValue)
+                            .font(.system(size: 10, weight: .medium))
+                    }
+                }
+            }
+            .foregroundColor(chordTextColor(isPlaying: isPlaying, isSelected: isSelected, isTarget: isTarget))
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(chordBackground(isPlaying: isPlaying, isSelected: isSelected, isTarget: isTarget))
+            .cornerRadius(6)
+            .scaleEffect(isPlaying ? 1.05 : 1.0)
+            .animation(.easeInOut(duration: 0.1), value: isPlaying)
+        }
+        .buttonStyle(.plain)
+    }
+    
+    private func chordInMeasureView(_ measureChord: MeasureChord) -> some View {
+        let isPlaying = playingChordIndex == measureChord.globalIndex
+        let isSelected = selectedChordIndex == measureChord.globalIndex
+        let isTarget = reharmTargets.contains(measureChord.globalIndex)
+        let isPolychord = measureChord.chord.extensions.contains("dimStack") && measureChord.chord.quality.isDominant
+        
+        return Button(action: { onChordTap(measureChord.globalIndex) }) {
+            Group {
+                if isPolychord {
+                    // Polychord display: Root triad over lower triad (minor 3rd below)
+                    let lowerRootPitchClass = (measureChord.chord.root.pitchClass - 3 + 12) % 12
+                    let lowerRoot = NoteName.from(pitchClass: lowerRootPitchClass)
+                    
+                    VStack(spacing: 0) {
+                        Text(measureChord.chord.root.rawValue)
+                            .font(.system(size: 11, weight: .semibold, design: .rounded))
+                        Rectangle()
+                            .fill(chordTextColor(isPlaying: isPlaying, isSelected: isSelected, isTarget: isTarget).opacity(0.5))
+                            .frame(width: 16, height: 1)
+                        Text(lowerRoot.rawValue)
+                            .font(.system(size: 11, weight: .semibold, design: .rounded))
+                    }
+                } else {
+                    VStack(spacing: 0) {
+                        Text(measureChord.chord.root.rawValue)
+                            .font(.system(size: 14, weight: .semibold, design: .rounded))
+                        Text(measureChord.chord.quality.rawValue.isEmpty ? "" : measureChord.chord.quality.rawValue)
+                            .font(.system(size: 8, weight: .medium))
+                    }
+                }
+            }
+            .foregroundColor(chordTextColor(isPlaying: isPlaying, isSelected: isSelected, isTarget: isTarget))
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .background(chordBackground(isPlaying: isPlaying, isSelected: isSelected, isTarget: isTarget))
+            .cornerRadius(4)
+            .scaleEffect(isPlaying ? 1.05 : 1.0)
+            .animation(.easeInOut(duration: 0.1), value: isPlaying)
+        }
+        .buttonStyle(.plain)
+    }
+    
+    private func chordTextColor(isPlaying: Bool, isSelected: Bool, isTarget: Bool) -> Color {
+        if isPlaying {
+            return .white
+        }
+        return NordicTheme.Dynamic.text(colorScheme)
+    }
+    
+    private func chordBackground(isPlaying: Bool, isSelected: Bool, isTarget: Bool) -> Color {
+        if isPlaying {
+            return NordicTheme.Colors.primary
+        } else if isSelected {
+            return NordicTheme.Colors.highlight.opacity(colorScheme == .dark ? 0.3 : 0.2)
+        } else if isTarget {
+            return NordicTheme.Colors.warning.opacity(colorScheme == .dark ? 0.2 : 0.12)
+        }
+        return Color.clear
+    }
+}
+
+// MARK: - Array Extension
+
+extension Array {
+    func chunked(into size: Int) -> [[Element]] {
+        stride(from: 0, to: count, by: size).map {
+            Array(self[$0..<Swift.min($0 + size, count)])
         }
     }
 }

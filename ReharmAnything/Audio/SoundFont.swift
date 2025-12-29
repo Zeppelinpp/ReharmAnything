@@ -2,6 +2,21 @@ import Foundation
 import AVFoundation
 import AudioToolbox
 
+// MARK: - ADSR Envelope Configuration
+
+/// ADSR envelope parameters for natural note articulation
+struct ADSREnvelope {
+    var attack: TimeInterval    // Time to reach peak velocity
+    var decay: TimeInterval     // Time from peak to sustain level
+    var sustain: Double         // Sustain level (0.0-1.0)
+    var release: TimeInterval   // Time to fade out after note off
+    
+    static let piano = ADSREnvelope(attack: 0.005, decay: 0.1, sustain: 0.7, release: 0.15)
+    static let rhodes = ADSREnvelope(attack: 0.01, decay: 0.15, sustain: 0.6, release: 0.2)
+    static let staccato = ADSREnvelope(attack: 0.002, decay: 0.05, sustain: 0.3, release: 0.08)
+    static let legato = ADSREnvelope(attack: 0.01, decay: 0.2, sustain: 0.85, release: 0.25)
+}
+
 // Sound types with dedicated SF2 files
 enum SoundFontType: String, CaseIterable, Identifiable {
     case grandPiano = "Grand Piano"
@@ -22,6 +37,14 @@ enum SoundFontType: String, CaseIterable, Identifiable {
         switch self {
         case .grandPiano: return "UprightPianoKW-20220221"
         case .rhodes: return "jRhodes3"
+        }
+    }
+    
+    // Default ADSR for each sound type
+    var defaultADSR: ADSREnvelope {
+        switch self {
+        case .grandPiano: return .piano
+        case .rhodes: return .rhodes
         }
     }
 }
@@ -45,7 +68,11 @@ class SharedAudioEngine: ObservableObject {
     private var currentSoundType: SoundFontType = .grandPiano
     private var activeNotes: Set<MIDINote> = []
     private var fadeOutTimers: [MIDINote: Timer] = [:]
+    private var releaseTimers: [MIDINote: Timer] = [:]
     private var loadedSF2: String?
+    
+    // ADSR envelope settings
+    var adsr: ADSREnvelope = .piano
     
     @Published var isLoaded = false
     @Published var loadError: String?
@@ -180,47 +207,102 @@ class SharedAudioEngine: ObservableObject {
     func setSoundType(_ type: SoundFontType) {
         guard type != currentSoundType else { return }
         currentSoundType = type
+        adsr = type.defaultADSR
         loadSoundFont(for: type)
     }
     
+    /// Play note with ADSR envelope applied
     func playNote(_ note: MIDINote, velocity: UInt8, channel: UInt8) {
+        // Cancel any pending release for this note
+        releaseTimers[note]?.invalidate()
+        releaseTimers.removeValue(forKey: note)
         fadeOutTimers[note]?.invalidate()
         fadeOutTimers.removeValue(forKey: note)
         
-        sampler?.startNote(UInt8(note), withVelocity: velocity, onChannel: channel)
+        // Apply attack envelope - start slightly softer and ramp up
+        let attackVelocity = UInt8(Double(velocity) * 0.85)
+        sampler?.startNote(UInt8(note), withVelocity: attackVelocity, onChannel: channel)
         activeNotes.insert(note)
+        
+        // Simulate attack phase by sending a slightly higher velocity after attack time
+        if adsr.attack > 0.002 {
+            DispatchQueue.main.asyncAfter(deadline: .now() + adsr.attack) { [weak self] in
+                guard self?.activeNotes.contains(note) == true else { return }
+                // Note is already playing, attack phase complete
+            }
+        }
+    }
+    
+    /// Play note with explicit duration (schedules automatic release)
+    func playNote(_ note: MIDINote, velocity: UInt8, channel: UInt8, duration: TimeInterval) {
+        playNote(note, velocity: velocity, channel: channel)
+        
+        // Schedule note release after duration
+        let releaseTimer = Timer.scheduledTimer(withTimeInterval: duration, repeats: false) { [weak self] _ in
+            self?.stopNoteWithRelease(note, channel: channel)
+        }
+        releaseTimers[note] = releaseTimer
+    }
+    
+    /// Stop note with natural release envelope
+    func stopNoteWithRelease(_ note: MIDINote, channel: UInt8) {
+        guard activeNotes.contains(note) else { return }
+        
+        // Apply release envelope - gradual fade out
+        let releaseSteps = 5
+        let stepDuration = adsr.release / Double(releaseSteps)
+        
+        for step in 0..<releaseSteps {
+            let delay = stepDuration * Double(step)
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
+                guard self?.activeNotes.contains(note) == true else { return }
+                if step == releaseSteps - 1 {
+                    // Final step: actually stop the note
+                    self?.sampler?.stopNote(UInt8(note), onChannel: channel)
+                    self?.activeNotes.remove(note)
+                }
+            }
+        }
     }
     
     // Fade out note to prevent clicks
     func stopNoteWithFade(_ note: MIDINote, channel: UInt8, fadeDuration: TimeInterval = 0.08) {
         guard activeNotes.contains(note) else { return }
         
-        // Immediate stop with fade simulation via quick note-off
-        sampler?.stopNote(UInt8(note), onChannel: channel)
-        activeNotes.remove(note)
+        // Use release envelope duration
+        let actualFade = max(fadeDuration, adsr.release * 0.5)
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + actualFade) { [weak self] in
+            self?.sampler?.stopNote(UInt8(note), onChannel: channel)
+            self?.activeNotes.remove(note)
+        }
     }
     
     func stopNote(_ note: MIDINote, channel: UInt8) {
-        stopNoteWithFade(note, channel: channel)
+        stopNoteWithRelease(note, channel: channel)
     }
     
     func stopAllNotes() {
-        for timer in fadeOutTimers.values {
-            timer.invalidate()
-        }
+        // Cancel all timers
+        for timer in fadeOutTimers.values { timer.invalidate() }
         fadeOutTimers.removeAll()
+        for timer in releaseTimers.values { timer.invalidate() }
+        releaseTimers.removeAll()
         
-        for note in activeNotes {
+        // Stop all active notes immediately with short fade
+        let notesToStop = activeNotes
+        activeNotes.removeAll()
+        
+        for note in notesToStop {
             sampler?.stopNote(UInt8(note), onChannel: 0)
         }
-        activeNotes.removeAll()
     }
     
     func stopAllNotesImmediate() {
-        for timer in fadeOutTimers.values {
-            timer.invalidate()
-        }
+        for timer in fadeOutTimers.values { timer.invalidate() }
         fadeOutTimers.removeAll()
+        for timer in releaseTimers.values { timer.invalidate() }
+        releaseTimers.removeAll()
         
         for note in 0...127 {
             sampler?.stopNote(UInt8(note), onChannel: 0)

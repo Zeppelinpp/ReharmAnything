@@ -137,11 +137,13 @@ class ReharmManager: ObservableObject {
                 let reharmedChords = strategy.apply(to: event.chord)
                 let durationPerChord = event.duration / Double(reharmedChords.count)
                 
-                for chord in reharmedChords {
+                for (index, chord) in reharmedChords.enumerated() {
                     newEvents.append(ChordEvent(
                         chord: chord,
                         startBeat: currentBeat,
-                        duration: durationPerChord
+                        duration: durationPerChord,
+                        measureNumber: event.measureNumber,
+                        sectionLabel: index == 0 ? event.sectionLabel : nil
                     ))
                     currentBeat += durationPerChord
                 }
@@ -149,7 +151,9 @@ class ReharmManager: ObservableObject {
                 newEvents.append(ChordEvent(
                     chord: event.chord,
                     startBeat: currentBeat,
-                    duration: event.duration
+                    duration: event.duration,
+                    measureNumber: event.measureNumber,
+                    sectionLabel: event.sectionLabel
                 ))
                 currentBeat += event.duration
             }
@@ -158,7 +162,12 @@ class ReharmManager: ObservableObject {
         return ChordProgression(
             title: progression.title + " (Reharmed)",
             events: newEvents,
-            tempo: progression.tempo
+            tempo: progression.tempo,
+            timeSignature: progression.timeSignature,
+            composer: progression.composer,
+            style: progression.style,
+            sectionMarkers: progression.sectionMarkers,
+            repeats: progression.repeats
         )
     }
     
@@ -172,11 +181,13 @@ class ReharmManager: ObservableObject {
                 let reharmedChords = strategy.apply(to: event.chord)
                 let durationPerChord = event.duration / Double(reharmedChords.count)
                 
-                for chord in reharmedChords {
+                for (index, chord) in reharmedChords.enumerated() {
                     newEvents.append(ChordEvent(
                         chord: chord,
                         startBeat: currentBeat,
-                        duration: durationPerChord
+                        duration: durationPerChord,
+                        measureNumber: event.measureNumber,
+                        sectionLabel: index == 0 ? event.sectionLabel : nil
                     ))
                     currentBeat += durationPerChord
                 }
@@ -184,7 +195,9 @@ class ReharmManager: ObservableObject {
                 newEvents.append(ChordEvent(
                     chord: event.chord,
                     startBeat: currentBeat,
-                    duration: event.duration
+                    duration: event.duration,
+                    measureNumber: event.measureNumber,
+                    sectionLabel: event.sectionLabel
                 ))
                 currentBeat += event.duration
             }
@@ -193,7 +206,12 @@ class ReharmManager: ObservableObject {
         return ChordProgression(
             title: progression.title + " (Reharmed)",
             events: newEvents,
-            tempo: progression.tempo
+            tempo: progression.tempo,
+            timeSignature: progression.timeSignature,
+            composer: progression.composer,
+            style: progression.style,
+            sectionMarkers: progression.sectionMarkers,
+            repeats: progression.repeats
         )
     }
 }

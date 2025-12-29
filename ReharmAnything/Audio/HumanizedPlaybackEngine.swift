@@ -1,6 +1,7 @@
 import Foundation
 import AVFoundation
 import Combine
+import QuartzCore
 
 /// Enhanced playback engine with humanization and rhythm patterns
 class HumanizedPlaybackEngine: ObservableObject {
@@ -10,9 +11,10 @@ class HumanizedPlaybackEngine: ObservableObject {
     @Published var selectedStyle: MusicStyle = .swing
     @Published var selectedPattern: RhythmPattern?
     @Published var humanizationEnabled = true
+    @Published var clickEnabled = false
     
     private var soundManager: SoundFontManager
-    private var timer: Timer?
+    private var displayLink: CADisplayLink?
     private var progression: ChordProgression?
     private var voicings: [Voicing] = []
     
@@ -21,7 +23,14 @@ class HumanizedPlaybackEngine: ObservableObject {
     private var scheduledNotes: [NoteEvent] = []
     private var playedNoteIndices: Set<Int> = []
     
-    private let tickInterval: TimeInterval = 0.01  // 10ms tick for precision
+    // Click track
+    private var lastClickBeat: Int = -1
+    private let clickGenerator = ClickSoundGenerator()
+    
+    // High-precision timing using absolute time
+    private var playbackStartTime: CFAbsoluteTime = 0
+    private var playbackStartBeat: Double = 0
+    private var cachedBeatsPerSecond: Double = 2.0  // Default 120 BPM
     
     init(soundManager: SoundFontManager = .shared) {
         self.soundManager = soundManager
@@ -64,27 +73,38 @@ class HumanizedPlaybackEngine: ObservableObject {
         
         isPlaying = true
         playedNoteIndices.removeAll()
+        lastClickBeat = -1
         
-        let beatsPerSecond = progression.tempo / 60.0
+        // Record start time for absolute timing
+        playbackStartTime = CFAbsoluteTimeGetCurrent()
+        playbackStartBeat = currentBeat
+        cachedBeatsPerSecond = progression.tempo / 60.0
         
-        let newTimer = Timer(timeInterval: tickInterval, repeats: true) { [weak self] _ in
-            self?.tick(beatsPerSecond: beatsPerSecond)
-        }
-        RunLoop.main.add(newTimer, forMode: .common)
-        timer = newTimer
+        // Use CADisplayLink for smooth, drift-free timing on main thread
+        displayLink = CADisplayLink(target: self, selector: #selector(displayLinkTick))
+        displayLink?.preferredFrameRateRange = CAFrameRateRange(minimum: 60, maximum: 120, preferred: 120)
+        displayLink?.add(to: .main, forMode: .common)
     }
     
     func pause() {
         isPlaying = false
-        timer?.invalidate()
-        timer = nil
+        displayLink?.invalidate()
+        displayLink = nil
+        
+        // Stop all notes using both managers to ensure cleanup
         soundManager.stopAll()
+        SharedAudioEngine.shared.stopAllNotes()
     }
     
     func stop() {
         pause()
         currentBeat = 0
         playedNoteIndices.removeAll()
+        lastClickBeat = -1
+    }
+    
+    @objc private func displayLinkTick() {
+        tick(beatsPerSecond: cachedBeatsPerSecond)
     }
     
     // MARK: - Note Scheduling
@@ -136,25 +156,70 @@ class HumanizedPlaybackEngine: ObservableObject {
     private func tick(beatsPerSecond: Double) {
         guard let progression = progression else { return }
         
-        currentBeat += tickInterval * beatsPerSecond
+        // Use absolute time for drift-free playback
+        let elapsed = CFAbsoluteTimeGetCurrent() - playbackStartTime
+        let newBeat = playbackStartBeat + elapsed * beatsPerSecond
         
         // Loop handling
-        if currentBeat >= progression.totalBeats {
+        if newBeat >= progression.totalBeats {
             if loopEnabled {
-                currentBeat = 0
+                // Reset timing reference for new loop
+                playbackStartTime = CFAbsoluteTimeGetCurrent()
+                playbackStartBeat = 0
                 playedNoteIndices.removeAll()
+                lastClickBeat = -1
                 soundManager.stopAll()
+                currentBeat = 0
+                return
             } else {
                 stop()
                 return
             }
         }
         
+        // Update current beat
+        currentBeat = newBeat
+        
+        // Play click track
+        if clickEnabled {
+            playClickIfNeeded(progression: progression, currentBeat: newBeat)
+        }
+        
         // Play scheduled notes
-        playScheduledNotes()
+        playScheduledNotes(currentBeat: newBeat)
     }
     
-    private func playScheduledNotes() {
+    // MARK: - Click Track
+    
+    /// Play click sound based on time signature
+    private func playClickIfNeeded(progression: ChordProgression, currentBeat: Double) {
+        let currentBeatInt = Int(floor(currentBeat))
+        guard currentBeatInt != lastClickBeat else { return }
+        
+        lastClickBeat = currentBeatInt
+        
+        let timeSignature = progression.timeSignature
+        let beatsPerMeasure = Int(timeSignature.beatsPerMeasure)
+        let beatInMeasure = currentBeatInt % beatsPerMeasure
+        
+        // 4/4: click on beats 2 and 4 (backbeat)
+        // 3/4: click on beat 1 only
+        let shouldClick: Bool
+        if timeSignature.beats == 4 && timeSignature.beatType == 4 {
+            shouldClick = (beatInMeasure == 1 || beatInMeasure == 3)  // 0-indexed: beats 2 and 4
+        } else if timeSignature.beats == 3 && timeSignature.beatType == 4 {
+            shouldClick = (beatInMeasure == 0)  // beat 1
+        } else {
+            // Default: click on beat 1 for other time signatures
+            shouldClick = (beatInMeasure == 0)
+        }
+        
+        if shouldClick {
+            clickGenerator.playClick()
+        }
+    }
+    
+    private func playScheduledNotes(currentBeat: Double) {
         for (index, note) in scheduledNotes.enumerated() {
             // Skip already played notes
             guard !playedNoteIndices.contains(index) else { continue }
@@ -170,19 +235,34 @@ class HumanizedPlaybackEngine: ObservableObject {
         }
         
         // Stop notes that have ended
-        stopExpiredNotes()
+        stopExpiredNotes(currentBeat: currentBeat)
     }
     
     private func playNote(_ note: NoteEvent) {
-        SharedAudioEngine.shared.playNote(note.midiNote, velocity: note.velocity, channel: note.channel)
+        guard let progression = progression else { return }
+        
+        // Convert duration from beats to seconds
+        let beatsPerSecond = progression.tempo / 60.0
+        let durationInSeconds = note.duration / beatsPerSecond
+        
+        // Play note with explicit duration for proper ADSR release
+        SharedAudioEngine.shared.playNote(
+            note.midiNote,
+            velocity: note.velocity,
+            channel: note.channel,
+            duration: durationInSeconds
+        )
     }
     
-    private func stopExpiredNotes() {
+    private func stopExpiredNotes(currentBeat: Double) {
+        // Notes are now auto-released by the engine based on duration
+        // This method kept for compatibility but release is handled by SharedAudioEngine
         for index in playedNoteIndices {
             guard index < scheduledNotes.count else { continue }
             let note = scheduledNotes[index]
             
-            if currentBeat >= note.position + note.duration {
+            // Only force stop if significantly past duration (safety check)
+            if currentBeat >= note.position + note.duration + 0.5 {
                 SharedAudioEngine.shared.stopNote(note.midiNote, channel: note.channel)
             }
         }
@@ -255,4 +335,76 @@ enum HumanizationPreset: String, CaseIterable, Identifiable {
     case styleDefault = "Style Default"
     
     var id: String { rawValue }
+}
+
+// MARK: - Click Sound Generator
+
+/// Generates click sounds using AVAudioEngine with a short sine wave burst
+class ClickSoundGenerator {
+    private var audioEngine: AVAudioEngine?
+    private var playerNode: AVAudioPlayerNode?
+    private var clickBuffer: AVAudioPCMBuffer?
+    
+    init() {
+        setupAudio()
+    }
+    
+    private func setupAudio() {
+        audioEngine = AVAudioEngine()
+        playerNode = AVAudioPlayerNode()
+        
+        guard let engine = audioEngine, let player = playerNode else { return }
+        
+        engine.attach(player)
+        
+        let format = AVAudioFormat(standardFormatWithSampleRate: 44100, channels: 1)!
+        engine.connect(player, to: engine.mainMixerNode, format: format)
+        
+        // Create click buffer (short sine wave burst at ~1000Hz)
+        createClickBuffer(format: format)
+        
+        do {
+            try engine.start()
+        } catch {
+            print("Click generator failed to start: \(error)")
+        }
+    }
+    
+    private func createClickBuffer(format: AVAudioFormat) {
+        let sampleRate = format.sampleRate
+        let duration: Double = 0.015  // 15ms click
+        let frameCount = AVAudioFrameCount(sampleRate * duration)
+        
+        guard let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: frameCount) else { return }
+        buffer.frameLength = frameCount
+        
+        let frequency: Double = 1000  // 1kHz tone
+        let amplitude: Float = 0.3
+        
+        guard let channelData = buffer.floatChannelData?[0] else { return }
+        
+        for frame in 0..<Int(frameCount) {
+            let t = Double(frame) / sampleRate
+            // Sine wave with quick attack/decay envelope
+            let envelope = Float(sin(Double.pi * t / duration))  // Quick fade in/out
+            let sample = amplitude * envelope * Float(sin(2.0 * Double.pi * frequency * t))
+            channelData[frame] = sample
+        }
+        
+        clickBuffer = buffer
+    }
+    
+    func playClick() {
+        guard let player = playerNode, let buffer = clickBuffer else { return }
+        
+        // Schedule and play immediately
+        player.scheduleBuffer(buffer, at: nil, options: [], completionHandler: nil)
+        if !player.isPlaying {
+            player.play()
+        }
+    }
+    
+    deinit {
+        audioEngine?.stop()
+    }
 }
