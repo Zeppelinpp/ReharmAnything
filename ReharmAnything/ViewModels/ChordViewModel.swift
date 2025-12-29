@@ -44,6 +44,10 @@ class ChordViewModel: ObservableObject {
     @Published var selectedPreset: HumanizationPreset = .natural
     @Published var clickEnabled = false
     
+    // Count-in state
+    @Published var isCountingIn = false
+    @Published var countInBeat: Int = 0
+    
     // Import state
     @Published var inputText = ""
     @Published var importError: String?
@@ -86,6 +90,14 @@ class ChordViewModel: ObservableObject {
         playbackEngine?.$currentBeat
             .receive(on: DispatchQueue.main)
             .assign(to: &$currentBeat)
+        
+        playbackEngine?.$isCountingIn
+            .receive(on: DispatchQueue.main)
+            .assign(to: &$isCountingIn)
+        
+        playbackEngine?.$countInBeat
+            .receive(on: DispatchQueue.main)
+            .assign(to: &$countInBeat)
     }
     
     // MARK: - Humanization Controls

@@ -12,6 +12,8 @@ class HumanizedPlaybackEngine: ObservableObject {
     @Published var selectedPattern: RhythmPattern?
     @Published var humanizationEnabled = true
     @Published var clickEnabled = false
+    @Published var isCountingIn = false  // True during count-in phase
+    @Published var countInBeat: Int = 0  // Current count-in beat (1, 2, 3, 4...)
     
     private var soundManager: SoundFontManager
     private var displayLink: CADisplayLink?
@@ -26,6 +28,10 @@ class HumanizedPlaybackEngine: ObservableObject {
     // Click track
     private var lastClickBeat: Int = -1
     private let clickGenerator = ClickSoundGenerator()
+    
+    // Count-in
+    private var countInBeatsTotal: Int = 0  // Number of count-in beats (usually 4 or time signature beats)
+    private var lastCountInBeat: Int = -1
     
     // High-precision timing using absolute time
     private var playbackStartTime: CFAbsoluteTime = 0
@@ -71,7 +77,41 @@ class HumanizedPlaybackEngine: ObservableObject {
     func play() {
         guard let progression = progression, !progression.events.isEmpty else { return }
         
+        // Start with count-in if starting from beginning
+        if currentBeat == 0 {
+            startCountIn(progression: progression)
+        } else {
+            startPlayback(progression: progression)
+        }
+    }
+    
+    private func startCountIn(progression: ChordProgression) {
         isPlaying = true
+        isCountingIn = true
+        countInBeat = 0
+        lastCountInBeat = -1
+        
+        // Count-in for one full measure based on time signature
+        countInBeatsTotal = progression.timeSignature.beats
+        
+        playedNoteIndices.removeAll()
+        lastClickBeat = -1
+        
+        // Record start time for count-in timing
+        playbackStartTime = CFAbsoluteTimeGetCurrent()
+        playbackStartBeat = Double(-countInBeatsTotal)  // Negative beats for count-in
+        cachedBeatsPerSecond = progression.tempo / 60.0
+        
+        // Use CADisplayLink for smooth timing
+        displayLink = CADisplayLink(target: self, selector: #selector(displayLinkTick))
+        displayLink?.preferredFrameRateRange = CAFrameRateRange(minimum: 60, maximum: 120, preferred: 120)
+        displayLink?.add(to: .main, forMode: .common)
+    }
+    
+    private func startPlayback(progression: ChordProgression) {
+        isPlaying = true
+        isCountingIn = false
+        countInBeat = 0
         playedNoteIndices.removeAll()
         lastClickBeat = -1
         
@@ -101,6 +141,9 @@ class HumanizedPlaybackEngine: ObservableObject {
         currentBeat = 0
         playedNoteIndices.removeAll()
         lastClickBeat = -1
+        isCountingIn = false
+        countInBeat = 0
+        lastCountInBeat = -1
     }
     
     @objc private func displayLinkTick() {
@@ -160,10 +203,39 @@ class HumanizedPlaybackEngine: ObservableObject {
         let elapsed = CFAbsoluteTimeGetCurrent() - playbackStartTime
         let newBeat = playbackStartBeat + elapsed * beatsPerSecond
         
+        // Handle count-in phase
+        if isCountingIn {
+            if newBeat >= 0 {
+                // Count-in finished, start actual playback
+                isCountingIn = false
+                countInBeat = 0
+                lastCountInBeat = -1
+                playbackStartTime = CFAbsoluteTimeGetCurrent()
+                playbackStartBeat = 0
+                currentBeat = 0
+                return
+            }
+            
+            // Play count-in clicks
+            let countInProgress = newBeat + Double(countInBeatsTotal)  // 0 to countInBeatsTotal
+            let currentCountBeat = Int(floor(countInProgress)) + 1  // 1, 2, 3, 4...
+            
+            if currentCountBeat != lastCountInBeat && currentCountBeat > 0 && currentCountBeat <= countInBeatsTotal {
+                lastCountInBeat = currentCountBeat
+                countInBeat = currentCountBeat
+                
+                // Play count-in click
+                clickGenerator.playClick()
+            }
+            
+            // Don't update currentBeat during count-in (keep it at 0)
+            return
+        }
+        
         // Loop handling
         if newBeat >= progression.totalBeats {
             if loopEnabled {
-                // Reset timing reference for new loop
+                // Reset timing reference for new loop (no count-in on loop)
                 playbackStartTime = CFAbsoluteTimeGetCurrent()
                 playbackStartBeat = 0
                 playedNoteIndices.removeAll()

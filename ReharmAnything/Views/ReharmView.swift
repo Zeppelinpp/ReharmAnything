@@ -35,6 +35,7 @@ struct ReharmView: View {
             if isZenMode {
                 // Zen Mode: Full screen chord view with piano
                 zenModeContent
+                    .frame(maxHeight: .infinity)
             } else {
                 // Normal Mode
                 normalModeContent
@@ -44,6 +45,7 @@ struct ReharmView: View {
             playbackControlsSection
         }
         .background(NordicTheme.Dynamic.background(colorScheme))
+        .ignoresSafeArea(isZenMode ? .container : [], edges: .top)
     }
     
     // MARK: - Zen Mode Content
@@ -62,45 +64,41 @@ struct ReharmView: View {
     
     private var zenModeContent: some View {
         // Full screen chord chart and piano (no header)
-        GeometryReader { geometry in
-            VStack(spacing: 0) {
-                // Chord progression - takes most of the space with auto-scroll
-                if let progression = viewModel.activeProgression {
-                    ScrollViewReader { proxy in
-                        ScrollView {
-                            zenModeChordChart(progression)
-                                .id(progression.id)
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 12)
-                        }
-                        .onChange(of: currentPlayingMeasure) { _, newMeasure in
-                            if let measure = newMeasure {
-                                let row = rowIndex(forMeasure: measure)
-                                withAnimation(.easeInOut(duration: 0.3)) {
-                                    proxy.scrollTo("row-\(row)", anchor: .center)
-                                }
+        VStack(spacing: 0) {
+            // Chord progression - takes available space with auto-scroll
+            if let progression = viewModel.activeProgression {
+                ScrollViewReader { proxy in
+                    ScrollView {
+                        zenModeChordChart(progression)
+                            .id(progression.id)
+                            .padding(.horizontal, 16)
+                            .padding(.vertical, 12)
+                    }
+                    .onChange(of: currentPlayingMeasure) { _, newMeasure in
+                        if let measure = newMeasure {
+                            let row = rowIndex(forMeasure: measure)
+                            withAnimation(.easeInOut(duration: 0.3)) {
+                                proxy.scrollTo("row-\(row)", anchor: .center)
                             }
                         }
                     }
-                    .frame(height: geometry.size.height * 0.55)
-                } else {
-                    Spacer()
-                        .frame(height: geometry.size.height * 0.55)
                 }
-                
-                // Piano keyboard - larger in zen mode
-                if let index = displayedChordIndex,
-                   !viewModel.currentVoicings.isEmpty,
-                   index < viewModel.currentVoicings.count {
-                    zenModePianoSection(voicing: viewModel.currentVoicings[index], chordIndex: index)
-                        .frame(height: geometry.size.height * 0.45)
-                        .transition(.opacity.combined(with: .scale(scale: 0.95)))
-                        .animation(.easeInOut(duration: 0.15), value: index)
-                } else {
-                    // Show empty piano when no chord selected
-                    emptyPianoSection
-                        .frame(height: geometry.size.height * 0.45)
-                }
+            } else {
+                Spacer()
+            }
+            
+            // Piano keyboard - fixed height at bottom
+            if let index = displayedChordIndex,
+               !viewModel.currentVoicings.isEmpty,
+               index < viewModel.currentVoicings.count {
+                zenModePianoSection(voicing: viewModel.currentVoicings[index], chordIndex: index)
+                    .frame(height: 200)
+                    .transition(.opacity.combined(with: .scale(scale: 0.95)))
+                    .animation(.easeInOut(duration: 0.15), value: index)
+            } else {
+                // Show empty piano when no chord selected
+                emptyPianoSection
+                    .frame(height: 200)
             }
         }
     }
@@ -908,8 +906,20 @@ struct ReharmView: View {
                 
                 Spacer()
                 
-                // Tempo display
-                if viewModel.activeProgression != nil {
+                // Count-in display or Tempo display
+                if viewModel.isCountingIn {
+                    // Show count-in beats
+                    HStack(spacing: 4) {
+                        ForEach(1...4, id: \.self) { beat in
+                            Circle()
+                                .fill(beat <= viewModel.countInBeat 
+                                    ? NordicTheme.Colors.highlight 
+                                    : NordicTheme.Dynamic.surfaceSecondary(colorScheme))
+                                .frame(width: 10, height: 10)
+                        }
+                    }
+                    .animation(.easeInOut(duration: 0.1), value: viewModel.countInBeat)
+                } else if viewModel.activeProgression != nil {
                     Text("\(Int(viewModel.tempo)) BPM")
                         .font(.system(size: 11, weight: .medium, design: .monospaced))
                         .foregroundColor(NordicTheme.Dynamic.textSecondary(colorScheme))
