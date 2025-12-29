@@ -20,12 +20,10 @@ ReharmAnything is a jazz reharmonization and playback application that allows us
 - `VoiceLeadingOptimizer`: Optimizes the transition between voicings using a cost-function-based dynamic programming approach to ensure smooth musical movement.
 
 ### Audio Layer (`Audio/`)
-- `HumanizedPlaybackEngine`: Schedules and manages the timing of MIDI events using `CADisplayLink` for drift-free playback. Supports looping, tempo, style-based humanization, and click track.
-- `JazzPianoRenderer`: Renders rhythm patterns into humanized MIDI note events, applying timing jitter, velocity variation, and jazz-specific articulations like anticipation hits.
-- `MusicHumanizer`: Applies humanization to note events and handles adaptive pattern selection based on chord density.
+- `HumanizedPlaybackEngine`: Schedules and manages the timing of MIDI events using `CADisplayLink` for drift-free playback. Supports looping, tempo, style-based humanization, and click track. Contains `ClickSoundGenerator` for metronome.
+- `MusicHumanizer`: The core humanization engine that applies timing jitter, velocity variation, and handles adaptive pattern selection based on chord density. Generates humanized `NoteEvent` sequences from chord progressions.
+- `RhythmPatternLibrary`: A collection of predefined jazz rhythm patterns (Whole Note, Syncopated, Quarter Note, Half Note) for each style. Also defines `MusicStyle` enum with style-specific humanizer configurations.
 - `SoundFontManager` & `SharedAudioEngine`: Manages the loading of SoundFont (.sf2) files and handles low-level MIDI note playback via `AVAudioUnitSampler` with ADSR envelope support.
-- `RhythmPatternLibrary`: A collection of predefined jazz rhythm patterns (Whole Note, Syncopated, Quarter Note, Half Note) for each style.
-- `ClickSoundGenerator`: Generates metronome click sounds synchronized to the time signature.
 
 ### Model Layer (`Models/`)
 - `Chord`: Defines a musical chord with root, quality, bass note, and extensions.
@@ -95,13 +93,12 @@ ReharmAnything is a jazz reharmonization and playback application that allows us
 │  │                            │                                          │   │
 │  │                            ▼                                          │   │
 │  │  ┌─────────────────────────────────────────────────────────────────┐ │   │
-│  │  │ MusicHumanizer → JazzPianoRenderer                              │ │   │
+│  │  │ MusicHumanizer                                                  │ │   │
 │  │  │   • Adaptive pattern selection (by chord density)               │ │   │
-│  │  │   • Micro-timing jitter (Gaussian)                              │ │   │
-│  │  │   • Lay-back / Push feel                                        │ │   │
-│  │  │   • Chord strumming                                             │ │   │
-│  │  │   • Velocity dynamics                                           │ │   │
-│  │  │   • Anticipation handling (and-of-4)                            │ │   │
+│  │  │   • Micro-timing jitter                                         │ │   │
+│  │  │   • Velocity dynamics & accents                                 │ │   │
+│  │  │   • Hand separation                                             │ │   │
+│  │  │   • Chord rolling (optional)                                    │ │   │
 │  │  └─────────────────────────────────────────────────────────────────┘ │   │
 │  │                            ▼                                          │   │
 │  │                      [NoteEvent]                                      │   │
@@ -163,8 +160,7 @@ Voicing
 - [VoicingGenerator.md](VoicingGenerator.md) - Professional piano voicing templates
 - [VoiceLeadingOptimizer.md](VoiceLeadingOptimizer.md) - Cost-based voice leading optimization
 - [HumanizedPlaybackEngine.md](HumanizedPlaybackEngine.md) - Real-time playback with click track
-- [JazzPianoRenderer.md](JazzPianoRenderer.md) - Humanized MIDI event generation
-- [SoundFontManager.md](SoundFontManager.md) - Audio engine with ADSR envelope
 - [MusicHumanizer.md](MusicHumanizer.md) - Adaptive humanization and pattern selection
-- [RhythmPatternLibrary.md](RhythmPatternLibrary.md) - Rhythm pattern definitions
+- [RhythmPatternLibrary.md](RhythmPatternLibrary.md) - Rhythm pattern definitions and music styles
+- [SoundFontManager.md](SoundFontManager.md) - Audio engine with ADSR envelope
 - [MusicXMLParser.md](MusicXMLParser.md) - MusicXML file parsing with repeat expansion

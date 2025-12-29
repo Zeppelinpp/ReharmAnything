@@ -16,7 +16,6 @@
 		E81234560005 /* ReharmStrategy.swift in Sources */ = {isa = PBXBuildFile; fileRef = E81234550005 /* ReharmStrategy.swift */; };
 		E81234560006 /* VoicingGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = E81234550006 /* VoicingGenerator.swift */; };
 		E81234560007 /* VoiceLeading.swift in Sources */ = {isa = PBXBuildFile; fileRef = E81234550007 /* VoiceLeading.swift */; };
-		E81234560008 /* AudioEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = E81234550008 /* AudioEngine.swift */; };
 		E81234560009 /* IrealParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = E81234550009 /* IrealParser.swift */; };
 		E81234560010 /* ChordViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = E81234550010 /* ChordViewModel.swift */; };
 		E81234560011 /* ChordInputView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E81234550011 /* ChordInputView.swift */; };
@@ -41,7 +40,6 @@
 		E81234550005 /* ReharmStrategy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReharmStrategy.swift; sourceTree = "<group>"; };
 		E81234550006 /* VoicingGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoicingGenerator.swift; sourceTree = "<group>"; };
 		E81234550007 /* VoiceLeading.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VoiceLeading.swift; sourceTree = "<group>"; };
-		E81234550008 /* AudioEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioEngine.swift; sourceTree = "<group>"; };
 		E81234550009 /* IrealParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IrealParser.swift; sourceTree = "<group>"; };
 		E81234550010 /* ChordViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChordViewModel.swift; sourceTree = "<group>"; };
 		E81234550011 /* ChordInputView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChordInputView.swift; sourceTree = "<group>"; };
@@ -140,7 +138,6 @@
 		E81234530007 /* Audio */ = {
 			isa = PBXGroup;
 			children = (
-				E81234550008 /* AudioEngine.swift */,
 				E81234550013 /* SoundFont.swift */,
 				E81234550015 /* MusicHumanizer.swift */,
 				E81234550016 /* RhythmPatternLibrary.swift */,
@@ -234,7 +231,6 @@
 				E81234560005 /* ReharmStrategy.swift in Sources */,
 				E81234560006 /* VoicingGenerator.swift in Sources */,
 				E81234560007 /* VoiceLeading.swift in Sources */,
-				E81234560008 /* AudioEngine.swift in Sources */,
 				E81234560009 /* IrealParser.swift in Sources */,
 				E81234560010 /* ChordViewModel.swift in Sources */,
 				E81234560011 /* ChordInputView.swift in Sources */,

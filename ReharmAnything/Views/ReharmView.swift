@@ -506,82 +506,65 @@ struct ReharmView: View {
                 .tint(NordicTheme.Colors.highlight)
             }
             
-            // Style selection
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Style")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundColor(NordicTheme.Dynamic.textSecondary(colorScheme))
-                
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 6) {
-                        ForEach(viewModel.availableStyles) { style in
-                            StyleButton(
-                                title: style.rawValue,
-                                isSelected: viewModel.selectedStyle == style,
-                                colorScheme: colorScheme
-                            ) {
-                                viewModel.setMusicStyle(style)
-                            }
-                        }
-                    }
+            // Style selection - Toggle Picker
+            TogglePickerSection(
+                title: "Style",
+                options: viewModel.availableStyles.map { $0.rawValue },
+                selectedIndex: viewModel.availableStyles.firstIndex(of: viewModel.selectedStyle) ?? 0,
+                colorScheme: colorScheme,
+                accentColor: NordicTheme.Colors.highlight
+            ) { index in
+                viewModel.setMusicStyle(viewModel.availableStyles[index])
+            }
+            
+            // Rhythm Pattern selection - Toggle Picker
+            TogglePickerSection(
+                title: "Rhythm",
+                options: rhythmPatternOptions,
+                selectedIndex: selectedPatternIndex,
+                colorScheme: colorScheme,
+                accentColor: NordicTheme.Colors.highlight
+            ) { index in
+                if index == 0 {
+                    viewModel.setRhythmPattern(nil)
+                } else {
+                    viewModel.setRhythmPattern(viewModel.availablePatterns[index - 1])
                 }
             }
             
-            // Rhythm pattern selection
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Rhythm Pattern")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundColor(NordicTheme.Dynamic.textSecondary(colorScheme))
-                
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: 6) {
-                        // No pattern option (sustained chords)
-                        PatternButton(
-                            title: "Sustained",
-                            subtitle: "Long notes",
-                            isSelected: viewModel.selectedPattern == nil,
-                            colorScheme: colorScheme
-                        ) {
-                            viewModel.setRhythmPattern(nil)
-                        }
-                        
-                        ForEach(viewModel.availablePatterns) { pattern in
-                            PatternButton(
-                                title: pattern.name.replacingOccurrences(of: "\(viewModel.selectedStyle.rawValue) ", with: ""),
-                                subtitle: pattern.description.prefix(20) + (pattern.description.count > 20 ? "..." : ""),
-                                isSelected: viewModel.selectedPattern?.id == pattern.id,
-                                colorScheme: colorScheme
-                            ) {
-                                viewModel.setRhythmPattern(pattern)
-                            }
-                        }
-                    }
-                }
-            }
-            
-            // Humanization preset
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Feel")
-                    .font(.system(size: 12, weight: .medium))
-                    .foregroundColor(NordicTheme.Dynamic.textSecondary(colorScheme))
-                
-                HStack(spacing: 6) {
-                    ForEach(viewModel.availablePresets) { preset in
-                        PresetButton(
-                            title: preset.rawValue,
-                            isSelected: viewModel.selectedPreset == preset,
-                            colorScheme: colorScheme
-                        ) {
-                            viewModel.setHumanizationPreset(preset)
-                        }
-                    }
-                }
+            // Feel selection - Toggle Picker
+            TogglePickerSection(
+                title: "Feel",
+                options: viewModel.availablePresets.map { $0.rawValue },
+                selectedIndex: viewModel.availablePresets.firstIndex(of: viewModel.selectedPreset) ?? 0,
+                colorScheme: colorScheme,
+                accentColor: NordicTheme.Colors.primary
+            ) { index in
+                viewModel.setHumanizationPreset(viewModel.availablePresets[index])
             }
         }
         .padding(16)
         .background(NordicTheme.Dynamic.surface(colorScheme))
         .cornerRadius(12)
         .opacity(viewModel.humanizationEnabled ? 1.0 : 0.6)
+    }
+    
+    // Computed properties for rhythm pattern picker
+    private var rhythmPatternOptions: [String] {
+        ["Sustained"] + viewModel.availablePatterns.map { 
+            $0.name.replacingOccurrences(of: "\(viewModel.selectedStyle.rawValue) ", with: "")
+        }
+    }
+    
+    private var selectedPatternIndex: Int {
+        if viewModel.selectedPattern == nil {
+            return 0
+        }
+        if let pattern = viewModel.selectedPattern,
+           let index = viewModel.availablePatterns.firstIndex(where: { $0.id == pattern.id }) {
+            return index + 1
+        }
+        return 0
     }
     
     private var playbackControlsSection: some View {
@@ -1088,99 +1071,72 @@ struct VoicingTypeButton: View {
     }
 }
 
-// Style button for humanization
-struct StyleButton: View {
+// Toggle Picker Section - unified toggle-style selector
+struct TogglePickerSection: View {
     let title: String
-    let isSelected: Bool
+    let options: [String]
+    let selectedIndex: Int
     let colorScheme: ColorScheme
-    let action: () -> Void
+    var accentColor: Color = NordicTheme.Colors.primary
+    let onSelect: (Int) -> Void
     
     var body: some View {
-        Button(action: action) {
+        VStack(alignment: .leading, spacing: 8) {
             Text(title)
-                .font(.system(size: 11, weight: isSelected ? .semibold : .regular))
-                .padding(.horizontal, 10)
-                .padding(.vertical, 6)
-                .background(
-                    Capsule()
-                        .fill(isSelected 
-                            ? NordicTheme.Colors.highlight 
-                            : NordicTheme.Dynamic.surfaceSecondary(colorScheme))
-                )
-                .foregroundColor(isSelected ? .white : NordicTheme.Dynamic.text(colorScheme))
-        }
-        .buttonStyle(.plain)
-    }
-}
-
-// Pattern button for rhythm patterns
-struct PatternButton: View {
-    let title: String
-    let subtitle: String
-    let isSelected: Bool
-    let colorScheme: ColorScheme
-    let action: () -> Void
-    
-    var body: some View {
-        Button(action: action) {
-            VStack(alignment: .leading, spacing: 2) {
-                Text(title)
-                    .font(.system(size: 10, weight: isSelected ? .semibold : .medium))
-                    .foregroundColor(isSelected 
-                        ? NordicTheme.Colors.highlight 
-                        : NordicTheme.Dynamic.text(colorScheme))
-                Text(subtitle)
-                    .font(.system(size: 7))
-                    .foregroundColor(NordicTheme.Dynamic.textSecondary(colorScheme))
-                    .lineLimit(1)
+                .font(.system(size: 12, weight: .medium))
+                .foregroundColor(NordicTheme.Dynamic.textSecondary(colorScheme))
+            
+            HStack(spacing: 0) {
+                ForEach(Array(options.enumerated()), id: \.offset) { index, option in
+                    let isSelected = index == selectedIndex
+                    let isFirst = index == 0
+                    let isLast = index == options.count - 1
+                    
+                    Button(action: { onSelect(index) }) {
+                        Text(option)
+                            .font(.system(size: 11, weight: isSelected ? .semibold : .regular))
+                            .foregroundColor(isSelected ? .white : NordicTheme.Dynamic.text(colorScheme))
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 8)
+                            .background(
+                                isSelected 
+                                    ? accentColor 
+                                    : NordicTheme.Dynamic.surfaceSecondary(colorScheme)
+                            )
+                    }
+                    .buttonStyle(.plain)
+                    .clipShape(
+                        RoundedCorner(
+                            radius: 8,
+                            corners: corners(isFirst: isFirst, isLast: isLast)
+                        )
+                    )
+                    
+                    // Separator between non-selected items
+                    if !isLast && !isSelected && (index + 1) != selectedIndex {
+                        Rectangle()
+                            .fill(NordicTheme.Dynamic.border(colorScheme))
+                            .frame(width: 0.5)
+                    }
+                }
             }
-            .padding(.horizontal, 8)
-            .padding(.vertical, 6)
-            .background(
-                RoundedRectangle(cornerRadius: 6)
-                    .fill(isSelected 
-                        ? NordicTheme.Colors.highlight.opacity(colorScheme == .dark ? 0.2 : 0.1)
-                        : NordicTheme.Dynamic.surfaceSecondary(colorScheme))
-            )
+            .background(NordicTheme.Dynamic.surfaceSecondary(colorScheme))
+            .clipShape(RoundedRectangle(cornerRadius: 8))
             .overlay(
-                RoundedRectangle(cornerRadius: 6)
-                    .stroke(isSelected ? NordicTheme.Colors.highlight.opacity(0.5) : Color.clear, lineWidth: 1)
+                RoundedRectangle(cornerRadius: 8)
+                    .stroke(NordicTheme.Dynamic.border(colorScheme), lineWidth: 0.5)
             )
         }
-        .buttonStyle(.plain)
+    }
+    
+    private func corners(isFirst: Bool, isLast: Bool) -> UIRectCorner {
+        if isFirst && isLast { return .allCorners }
+        if isFirst { return [.topLeft, .bottomLeft] }
+        if isLast { return [.topRight, .bottomRight] }
+        return []
     }
 }
 
-// Preset button for humanization presets
-struct PresetButton: View {
-    let title: String
-    let isSelected: Bool
-    let colorScheme: ColorScheme
-    let action: () -> Void
-    
-    var body: some View {
-        Button(action: action) {
-            Text(title)
-                .font(.system(size: 10, weight: isSelected ? .semibold : .regular))
-                .padding(.horizontal, 8)
-                .padding(.vertical, 5)
-                .background(
-                    RoundedRectangle(cornerRadius: 5)
-                        .fill(isSelected 
-                            ? NordicTheme.Colors.primary.opacity(colorScheme == .dark ? 0.25 : 0.15)
-                            : NordicTheme.Dynamic.surfaceSecondary(colorScheme))
-                )
-                .foregroundColor(isSelected 
-                    ? NordicTheme.Colors.primary 
-                    : NordicTheme.Dynamic.text(colorScheme))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 5)
-                        .stroke(isSelected ? NordicTheme.Colors.primary.opacity(0.4) : Color.clear, lineWidth: 1)
-                )
-        }
-        .buttonStyle(.plain)
-    }
-}
 
 // Piano keyboard view
 struct PianoKeyboardView: View {

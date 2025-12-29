@@ -8,3 +8,6 @@ wheels/
 
 # Virtual environments
 .venv
+。musicxml
+.sf2
+.sfz

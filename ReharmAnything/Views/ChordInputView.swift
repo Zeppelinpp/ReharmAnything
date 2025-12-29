@@ -6,34 +6,34 @@ struct ChordInputView: View {
     @Environment(\.colorScheme) var colorScheme
     
     var body: some View {
-        VStack(spacing: 0) {
-            headerSection
-            
-            Spacer()
-            
-            // Import button
-            importSection
-                .padding(.horizontal, 24)
-                .padding(.bottom, 16)
-            
-            // Quick load section
-            quickLoadSection
-                .padding(.horizontal, 24)
-            
-            Spacer()
-            
-            // Error message
-            if let error = viewModel.importError {
-                errorSection(error)
+        ScrollView {
+            VStack(spacing: 0) {
+                headerSection
+                
+                // Import button
+                importSection
                     .padding(.horizontal, 24)
-                    .padding(.bottom, 12)
-            }
-            
-            // Status indicator
-            if viewModel.originalProgression != nil {
-                loadedStatusSection
+                    .padding(.top, 24)
+                    .padding(.bottom, 16)
+                
+                // Quick load section
+                quickLoadSection
                     .padding(.horizontal, 24)
-                    .padding(.bottom, 20)
+                    .padding(.bottom, 16)
+                
+                // Error message
+                if let error = viewModel.importError {
+                    errorSection(error)
+                        .padding(.horizontal, 24)
+                        .padding(.bottom, 12)
+                }
+                
+                // Status indicator
+                if viewModel.originalProgression != nil {
+                    loadedStatusSection
+                        .padding(.horizontal, 24)
+                        .padding(.bottom, 20)
+                }
             }
         }
         .background(NordicTheme.Dynamic.background(colorScheme))

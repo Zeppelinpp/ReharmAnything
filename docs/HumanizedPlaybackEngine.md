@@ -5,34 +5,35 @@ The real-time playback controller that manages the conversion of musical models 
 ## Key Responsibilities
 
 - **Timer Management**: Uses `CADisplayLink` for high-precision, drift-free timing (120Hz frame rate).
-- **Note Scheduling**: Converts a `ChordProgression` and its `Voicings` into a sequence of humanized `NoteEvent` objects.
+- **Note Scheduling**: Converts a `ChordProgression` and its `Voicings` into a sequence of humanized `NoteEvent` objects via `MusicHumanizer`.
 - **Rhythm & Style**: Applies selected `MusicStyle` and `RhythmPattern` configurations to the rendering process.
 - **Dynamic Looping**: Manages the loop state, resetting playback and stopping active notes at the end of a progression.
-- **Click Track**: Generates a metronome click synchronized to the time signature.
+- **Click Track**: Contains `ClickSoundGenerator` for metronome click synchronized to the time signature.
 
-## New Features
+## High-Precision Timing
 
-### High-Precision Timing
-- Replaced `Timer` with `CADisplayLink` for smoother, drift-free playback.
+- Uses `CADisplayLink` for smoother, drift-free playback (preferred frame rate: 120Hz).
 - Uses absolute time (`CFAbsoluteTimeGetCurrent()`) to calculate current beat position, preventing cumulative timing errors.
 - `playbackStartTime` and `playbackStartBeat` track the reference point for timing calculations.
 
-### Click Track Support
+## Click Track Support
+
 - `clickEnabled`: Toggle for metronome click.
-- `ClickSoundGenerator`: A dedicated class that generates a short 1kHz sine wave burst using `AVAudioEngine` and `AVAudioPlayerNode`.
+- `ClickSoundGenerator`: A dedicated inner class that generates a short 1kHz sine wave burst using `AVAudioEngine` and `AVAudioPlayerNode`.
 - Click placement respects time signature:
   - **4/4**: Clicks on beats 2 and 4 (backbeat).
   - **3/4**: Click on beat 1 only.
   - Other time signatures: Click on beat 1 by default.
 
-### ADSR-Aware Note Playback
-- `playNote(_:velocity:channel:duration:)`: New method that schedules automatic note release after a specified duration.
+## ADSR-Aware Note Playback
+
+- Notes are played via `SharedAudioEngine.playNote(_:velocity:channel:duration:)` which schedules automatic release.
 - Integrates with `SharedAudioEngine`'s ADSR envelope for natural note articulation.
 
 ## Logic Flow
 
 1. **Initialization**: Accepts a `SoundFontManager` and initializes a `MusicHumanizer`.
-2. **Regeneration**: Whenever the progression, style, or pattern changes, it calls `MusicHumanizer` (which uses `JazzPianoRenderer`) to regenerate the list of `scheduledNotes`.
+2. **Regeneration**: Whenever the progression, style, or pattern changes, calls `MusicHumanizer.generateNoteEvents()` to regenerate the list of `scheduledNotes`.
 3. **Tick Logic (`displayLinkTick`)**:
    - Calculates the current beat based on `CFAbsoluteTimeGetCurrent()` and tempo.
    - Handles loop wrap-around when `currentBeat >= totalBeats`.
@@ -48,7 +49,7 @@ ChordViewModel
     ▼ setProgression(), play(), stop()
 HumanizedPlaybackEngine
     │
-    ├─▶ MusicHumanizer.generateNoteEvents() ──▶ JazzPianoRenderer
+    ├─▶ MusicHumanizer.generateNoteEvents()
     │
     ├─▶ ClickSoundGenerator.playClick()
     │
@@ -60,5 +61,16 @@ HumanizedPlaybackEngine
 - `play()` / `pause()` / `stop()`: Controls the `CADisplayLink` and audio state.
 - `setProgression(_:voicings:)`: Updates the source data and triggers note regeneration.
 - `setStyle(_:)` / `setPattern(_:)`: Updates the aesthetic parameters of the rendering.
+- `applyPreset(_:)`: Applies humanization presets (robotic, tight, natural, loose, expressive).
 - `seekTo(beat:)`: Allows jumping to a specific position in the progression.
-- `toggleClick()` (via ViewModel): Enables/disables the metronome.
+
+## Humanization Presets
+
+| Preset | Description |
+|--------|-------------|
+| `robotic` | Zero humanization, perfect timing |
+| `tight` | Minimal jitter, precise feel |
+| `natural` | Default balanced humanization |
+| `loose` | More variation, relaxed feel |
+| `expressive` | Maximum expression with chord rolling |
+| `styleDefault` | Uses the selected MusicStyle's default config |
