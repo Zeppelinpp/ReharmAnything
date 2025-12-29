@@ -33,6 +33,7 @@ struct NordicTheme {
         // Semantic colors
         static let success = Color(red: 0.45, green: 0.60, blue: 0.50)              // Muted green
         static let warning = Color(red: 0.75, green: 0.60, blue: 0.40)              // Warm amber
+        static let error = Color(red: 0.75, green: 0.40, blue: 0.40)                // Muted red
         static let highlight = Color(red: 0.55, green: 0.50, blue: 0.65)            // Soft lavender
     }
     

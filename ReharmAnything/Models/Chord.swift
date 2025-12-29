@@ -3,6 +3,35 @@ import Foundation
 // MIDI note representation
 typealias MIDINote = Int
 
+// MARK: - Time Signature
+
+/// Represents a musical time signature
+struct TimeSignature: Codable, Equatable {
+    let beats: Int      // Numerator (e.g., 4 in 4/4)
+    let beatType: Int   // Denominator (e.g., 4 in 4/4)
+    
+    static let common = TimeSignature(beats: 4, beatType: 4)  // 4/4
+    static let waltz = TimeSignature(beats: 3, beatType: 4)   // 3/4
+    static let cut = TimeSignature(beats: 2, beatType: 2)     // 2/2
+    
+    /// Number of eighth notes in one measure
+    var eighthNotesPerMeasure: Int {
+        let eighthsPerBeat = 8 / beatType
+        return beats * eighthsPerBeat
+    }
+    
+    /// Duration of one measure in beats (quarter notes)
+    var beatsPerMeasure: Double {
+        return Double(beats) * (4.0 / Double(beatType))
+    }
+    
+    /// Position of each eighth note in a measure (in beats)
+    func eighthNotePositions() -> [Double] {
+        let eighthNoteDuration = 0.5  // Half a beat
+        return (0..<eighthNotesPerMeasure).map { Double($0) * eighthNoteDuration }
+    }
+}
+
 // MARK: - Voicing Types
 
 enum VoicingType: String, CaseIterable, Identifiable, Codable {
@@ -298,36 +327,84 @@ struct Voicing: Equatable {
     }
 }
 
+// MARK: - Section Marker
+
+/// Section marker (A, B, C, etc.) for chart navigation
+struct SectionMarker: Codable, Equatable {
+    let label: String       // "A", "B", "C", etc.
+    let measureNumber: Int  // Measure where this section starts
+}
+
+// MARK: - Repeat Structure
+
+/// Repeat information for a section
+struct RepeatInfo: Codable, Equatable {
+    let startMeasure: Int
+    let endMeasure: Int
+    let times: Int  // Number of times to repeat (usually 2)
+    var endings: [Ending]  // First/second endings
+    
+    struct Ending: Codable, Equatable {
+        let number: Int         // 1 = first ending, 2 = second ending
+        let startMeasure: Int
+        let endMeasure: Int
+    }
+}
+
 // Chord progression (sequence of chords with timing)
 struct ChordEvent: Identifiable, Codable {
     let id: UUID
     let chord: Chord
     let startBeat: Double
     let duration: Double // In beats
+    var measureNumber: Int  // Which measure this chord is in
+    var sectionLabel: String?  // Section marker if at start of section
     
-    init(chord: Chord, startBeat: Double, duration: Double) {
+    init(chord: Chord, startBeat: Double, duration: Double, measureNumber: Int = 1, sectionLabel: String? = nil) {
         self.id = UUID()
         self.chord = chord
         self.startBeat = startBeat
         self.duration = duration
+        self.measureNumber = measureNumber
+        self.sectionLabel = sectionLabel
     }
 }
 
 struct ChordProgression: Identifiable, Codable {
     let id: UUID
     let title: String
+    var composer: String?
+    var style: String?
     var events: [ChordEvent]
     var tempo: Double // BPM
+    var timeSignature: TimeSignature
+    var sectionMarkers: [SectionMarker]  // A, B, C section labels
+    var repeats: [RepeatInfo]  // Repeat structures
     
-    init(title: String, events: [ChordEvent], tempo: Double = 120) {
+    init(title: String, events: [ChordEvent], tempo: Double = 120, timeSignature: TimeSignature = .common, composer: String? = nil, style: String? = nil, sectionMarkers: [SectionMarker] = [], repeats: [RepeatInfo] = []) {
         self.id = UUID()
         self.title = title
+        self.composer = composer
+        self.style = style
         self.events = events
         self.tempo = tempo
+        self.timeSignature = timeSignature
+        self.sectionMarkers = sectionMarkers
+        self.repeats = repeats
     }
     
     var totalBeats: Double {
         events.map { $0.startBeat + $0.duration }.max() ?? 0
+    }
+    
+    /// Total number of measures in the progression
+    var totalMeasures: Int {
+        Int(ceil(totalBeats / timeSignature.beatsPerMeasure))
+    }
+    
+    /// Get section label for a specific measure
+    func sectionLabel(forMeasure measure: Int) -> String? {
+        sectionMarkers.first { $0.measureNumber == measure }?.label
     }
 }
 
