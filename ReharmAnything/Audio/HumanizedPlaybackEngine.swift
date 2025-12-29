@@ -88,8 +88,8 @@ class HumanizedPlaybackEngine: ObservableObject {
     private func startCountIn(progression: ChordProgression) {
         isPlaying = true
         isCountingIn = true
-        countInBeat = 0
-        lastCountInBeat = -1
+        countInBeat = 1  // Start at beat 1
+        lastCountInBeat = 0  // Will trigger first click immediately
         
         // Count-in for one full measure based on time signature
         countInBeatsTotal = progression.timeSignature.beats
@@ -101,6 +101,10 @@ class HumanizedPlaybackEngine: ObservableObject {
         playbackStartTime = CFAbsoluteTimeGetCurrent()
         playbackStartBeat = Double(-countInBeatsTotal)  // Negative beats for count-in
         cachedBeatsPerSecond = progression.tempo / 60.0
+        
+        // Play first click immediately
+        clickGenerator.playClick()
+        lastCountInBeat = 1
         
         // Use CADisplayLink for smooth timing
         displayLink = CADisplayLink(target: self, selector: #selector(displayLinkTick))
@@ -217,10 +221,12 @@ class HumanizedPlaybackEngine: ObservableObject {
             }
             
             // Play count-in clicks
-            let countInProgress = newBeat + Double(countInBeatsTotal)  // 0 to countInBeatsTotal
-            let currentCountBeat = Int(floor(countInProgress)) + 1  // 1, 2, 3, 4...
+            // newBeat goes from -countInBeatsTotal to 0
+            // We want clicks at -4, -3, -2, -1 (for 4/4 time)
+            // currentCountBeat should be 1 when newBeat crosses -4, 2 when crosses -3, etc.
+            let currentCountBeat = countInBeatsTotal + Int(floor(newBeat)) + 1
             
-            if currentCountBeat != lastCountInBeat && currentCountBeat > 0 && currentCountBeat <= countInBeatsTotal {
+            if currentCountBeat != lastCountInBeat && currentCountBeat >= 1 && currentCountBeat <= countInBeatsTotal {
                 lastCountInBeat = currentCountBeat
                 countInBeat = currentCountBeat
                 
