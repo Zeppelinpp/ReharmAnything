@@ -262,7 +262,7 @@ class MusicHumanizer {
         // Probability: 90% whole note, 10% syncopated
         if chordsInMeasure == 1 || chordDuration >= beatsPerMeasure - 0.1 {
             let random = Double.random(in: 0..<1)
-            if random < 0.9 {
+            if random < 0.75 {
                 // 90% chance: whole note (sustained through the measure)
                 return library.getPattern(named: "Whole Note")
             } else {
