@@ -927,7 +927,6 @@ struct ReharmView: View {
             }
             .padding(.horizontal, 20)
             .padding(.vertical, 12)
-            .padding(.bottom, isZenMode ? 20 : 0) // Extra padding for home indicator in Zen mode
         }
         .background(NordicTheme.Dynamic.surface(colorScheme))
         .overlay(alignment: .top) {
