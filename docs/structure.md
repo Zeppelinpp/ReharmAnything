@@ -167,3 +167,4 @@ Voicing
 - [SoundFontManager.md](SoundFontManager.md) - Audio engine with ADSR envelope
 - [MusicHumanizer.md](MusicHumanizer.md) - Adaptive humanization and pattern selection
 - [RhythmPatternLibrary.md](RhythmPatternLibrary.md) - Rhythm pattern definitions
+- [MusicXMLParser.md](MusicXMLParser.md) - MusicXML file parsing with repeat expansion
