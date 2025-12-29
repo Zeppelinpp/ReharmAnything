@@ -92,13 +92,13 @@ struct ReharmView: View {
                !viewModel.currentVoicings.isEmpty,
                index < viewModel.currentVoicings.count {
                 zenModePianoSection(voicing: viewModel.currentVoicings[index], chordIndex: index)
-                    .frame(height: 200)
+                    .frame(height: 140)
                     .transition(.opacity.combined(with: .scale(scale: 0.95)))
                     .animation(.easeInOut(duration: 0.15), value: index)
             } else {
                 // Show empty piano when no chord selected
                 emptyPianoSection
-                    .frame(height: 200)
+                    .frame(height: 140)
             }
         }
     }
@@ -203,21 +203,21 @@ struct ReharmView: View {
     }
     
     private func zenModePianoSection(voicing: Voicing, chordIndex: Int) -> some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 8) {
             // Chord name only (simplified)
             Text(voicing.chord.displayName)
-                .font(.system(size: 28, weight: .bold, design: .serif))
+                .font(.system(size: 24, weight: .bold, design: .serif))
                 .foregroundColor(NordicTheme.Dynamic.text(colorScheme))
-                .padding(.top, 12)
+                .padding(.top, 8)
             
-            // Large piano keyboard
+            // Compact piano keyboard
             PianoKeyboardView(highlightedNotes: Set(voicing.notes), colorScheme: colorScheme)
-                .frame(height: 140)
+                .frame(height: 90)
                 .padding(.horizontal, 8)
-                .padding(.bottom, 8)
+                .padding(.bottom, 6)
         }
         .background(NordicTheme.Dynamic.surface(colorScheme))
-        .cornerRadius(16)
+        .cornerRadius(12)
         .padding(.horizontal, 16)
         .padding(.bottom, 8)
     }
