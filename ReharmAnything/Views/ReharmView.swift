@@ -934,6 +934,8 @@ struct ReharmView: View {
                 .fill(NordicTheme.Dynamic.border(colorScheme))
                 .frame(height: 0.5)
         }
+        .padding(.bottom, isZenMode ? 0 : 0) // Placeholder for safe area handling
+        .ignoresSafeArea(isZenMode ? .container : [], edges: .bottom)
     }
 }
 

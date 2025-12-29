@@ -5,25 +5,27 @@ ReharmAnything is a jazz reharmonization and playback application that allows us
 ## Component Overview
 
 ### View Layer (`Views/`)
-- `ContentView`: The main container view that manages tab navigation between the chart input and reharmonization screens.
-- `ChordInputView`: Handles the input and parsing of chord charts (iReal Pro URLs, text, MusicXML files).
-- `ReharmView`: Provides controls for reharmonization strategies, playback settings, and visual analysis of voicings.
+- `ContentView`: The main container view that manages tab navigation. Now includes `isZenMode` state to hide headers/tab-bars.
+- `ChordInputView`: Handles the input and parsing of chord charts. Includes a scrollable recent imports list.
+- `ReharmView`: Provides controls for reharmonization and playback.
+  - **Zen Mode**: A distraction-free full-screen mode with auto-scrolling chord chart and enlarged piano keyboard.
+  - **Dropdown Selection**: Menu-based pickers for Style, Rhythm, and Feel.
 
 ### ViewModel Layer (`ViewModels/`)
-- `ChordViewModel`: The central hub that orchestrates the app state. It coordinates interactions between the UI and various services like parsing, reharmonization, voicing generation, and audio playback.
+- `ChordViewModel`: Orchestrates app state. Now tracks **count-in state**, **Zen mode state**, and maintains **Key Signature** through reharmonization.
 
 ### Service Layer (`Services/`)
-- `IrealParser`: Responsible for parsing iReal Pro encoded data and simple text chord charts into a structured `ChordProgression`.
-- `MusicXMLParser`: Parses MusicXML files (`.musicxml`, `.xml`) into chord progressions with full metadata support (time signature, sections, repeats).
-- `ReharmManager`: Manages and applies reharmonization strategies (e.g., Tritone Substitution, Related ii-V) to chord progressions.
-- `VoicingGenerator`: Generates professional two-hand piano voicings (Rootless A/B, Shell, Quartal, etc.) based on chord qualities.
-- `VoiceLeadingOptimizer`: Optimizes the transition between voicings using a cost-function-based dynamic programming approach to ensure smooth musical movement.
+- `IrealParser`: Responsible for parsing iReal Pro encoded data.
+- `MusicXMLParser`: Parses MusicXML files, now with full **Key Signature (fifths/mode)** support.
+- `ReharmManager`: Manages reharmonization strategies.
+- `VoicingGenerator`: Generates professional two-hand piano voicings.
+- `VoiceLeadingOptimizer`: Optimizes voicing transitions using dynamic programming.
 
 ### Audio Layer (`Audio/`)
-- `HumanizedPlaybackEngine`: Schedules and manages the timing of MIDI events using `CADisplayLink` for drift-free playback. Supports looping, tempo, style-based humanization, and click track. Contains `ClickSoundGenerator` for metronome.
-- `MusicHumanizer`: The core humanization engine that applies timing jitter, velocity variation, and handles adaptive pattern selection based on chord density. Generates humanized `NoteEvent` sequences from chord progressions.
-- `RhythmPatternLibrary`: A collection of predefined jazz rhythm patterns (Whole Note, Syncopated, Quarter Note, Half Note) for each style. Also defines `MusicStyle` enum with style-specific humanizer configurations.
-- `SoundFontManager` & `SharedAudioEngine`: Manages the loading of SoundFont (.sf2) files and handles low-level MIDI note playback via `AVAudioUnitSampler` with ADSR envelope support.
+- `HumanizedPlaybackEngine`: High-precision playback using `CADisplayLink`. Now includes **Count-in (pre-roll)** logic based on time signature.
+- `MusicHumanizer`: Applies timing jitter and adaptive pattern selection. Weighted probabilities now favor **Whole Note** (sustained) for single-chord measures.
+- `RhythmPatternLibrary`: Defines music styles and rhythmic templates.
+- `SoundFontManager` & `SharedAudioEngine`: Low-level MIDI playback with ADSR envelope simulation.
 
 ### Model Layer (`Models/`)
 - `Chord`: Defines a musical chord with root, quality, bass note, and extensions.

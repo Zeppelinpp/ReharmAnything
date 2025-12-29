@@ -258,15 +258,15 @@ class MusicHumanizer {
         }
         
         // 1 chord per measure (whole bar): weighted random selection
-        // Whole note (sustained) should be more common than syncopated
-        // Probability: 70% whole note, 30% syncopated
+        // Whole note (sustained) should be much more common than syncopated
+        // Probability: 90% whole note, 10% syncopated
         if chordsInMeasure == 1 || chordDuration >= beatsPerMeasure - 0.1 {
             let random = Double.random(in: 0..<1)
-            if random < 0.7 {
-                // 70% chance: whole note (sustained through the measure)
+            if random < 0.9 {
+                // 90% chance: whole note (sustained through the measure)
                 return library.getPattern(named: "Whole Note")
             } else {
-                // 30% chance: syncopated pattern
+                // 10% chance: syncopated pattern for occasional variation
                 return library.getPattern(named: "Syncopated") ?? library.getPattern(named: "Whole Note")
             }
         }

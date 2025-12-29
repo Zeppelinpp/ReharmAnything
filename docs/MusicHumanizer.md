@@ -16,7 +16,21 @@ The humanizer analyzes the chord density per measure and selects patterns accord
 |--------------------|----------------|------------------|------------------------------------------------|
 | ≥ 4                | ≤ 1.0 beats    | None (on-beat)   | Too dense for patterns; play exactly at chord's start. |
 | 2                  | ~2.0 beats     | "Syncopated"     | Half-bar chords benefit from syncopation.      |
-| 1                  | ≥ 4.0 beats    | Random: "Whole Note" or "Syncopated" | Full-bar chords can sustain or syncopate. |
+| 1                  | ≥ 4.0 beats    | **Weighted Random** | Favour sustaining the chord (70%) over syncopation (30%). |
+
+### Weighted Selection for Sparse Bars
+
+When an entire measure (usually 4 beats) contains only one chord, the humanizer uses a **weighted random selection** to decide how to play it:
+
+- **90% Chance: "Whole Note" Pattern**
+  - The chord is sustained through the entire measure.
+  - More natural for slower ballads or traditional jazz accompaniment.
+  - Preferred to avoid "short staccato" feel in sparse charts.
+- **10% Chance: "Syncopated" Pattern**
+  - Adds occasional rhythmic interest with a syncopated feel.
+  - Rare enough to prevent repetitive "jumpy" behavior.
+
+This logic ensures that "playing on beat 1 and stopping" (which often happens with short-duration patterns) is avoided in favor of more musical sustain.
 
 ### Implementation
 

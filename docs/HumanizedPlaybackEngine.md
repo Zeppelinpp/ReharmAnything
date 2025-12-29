@@ -5,16 +5,26 @@ The real-time playback controller that manages the conversion of musical models 
 ## Key Responsibilities
 
 - **Timer Management**: Uses `CADisplayLink` for high-precision, drift-free timing (120Hz frame rate).
+- **Count-in (Pre-roll)**: Plays one full measure of metronome clicks before actual playback starts.
 - **Note Scheduling**: Converts a `ChordProgression` and its `Voicings` into a sequence of humanized `NoteEvent` objects via `MusicHumanizer`.
-- **Rhythm & Style**: Applies selected `MusicStyle` and `RhythmPattern` configurations to the rendering process.
-- **Dynamic Looping**: Manages the loop state, resetting playback and stopping active notes at the end of a progression.
-- **Click Track**: Contains `ClickSoundGenerator` for metronome click synchronized to the time signature.
+- **Rhythm & Style**: Applies selected `MusicStyle` and `RhythmPattern` configurations.
+- **Dynamic Looping**: Manages the loop state, resetting playback and stopping active notes at the end.
+- **Click Track**: Contains `ClickSoundGenerator` for metronome clicks synchronized to the time signature.
+
+## Count-in Logic
+
+- When starting playback from the beginning (`currentBeat == 0`), the engine entering a **Count-in Phase**.
+- The number of count-in beats is determined by the **Time Signature** (e.g., 4 beats for 4/4).
+- The first count-in click triggers **immediately** on user interaction for zero-latency feedback.
+- Subsequent clicks are scheduled at correct intervals.
+- The `isCountingIn` flag notifies the UI to show a visual countdown (dots).
+- No count-in is applied during loop wrap-around or when resuming from pause.
 
 ## High-Precision Timing
 
-- Uses `CADisplayLink` for smoother, drift-free playback (preferred frame rate: 120Hz).
-- Uses absolute time (`CFAbsoluteTimeGetCurrent()`) to calculate current beat position, preventing cumulative timing errors.
-- `playbackStartTime` and `playbackStartBeat` track the reference point for timing calculations.
+- Uses `CADisplayLink` for smoother, drift-free playback.
+- Uses absolute time (`CFAbsoluteTimeGetCurrent()`) to calculate current beat position, preventing cumulative drift.
+- `playbackStartTime` and `playbackStartBeat` track the reference point. For count-in, `playbackStartBeat` is set to `-countInBeatsTotal`.
 
 ## Click Track Support
 
