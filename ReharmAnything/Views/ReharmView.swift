@@ -166,10 +166,13 @@ struct ReharmView: View {
         .background(NordicTheme.Dynamic.surfaceSecondary(colorScheme))
     }
     
-    /// Infer key center from progression
+    /// Get key center from progression (parsed from MusicXML or inferred)
     private func inferKeyCenter(from progression: ChordProgression) -> String {
-        // Simple heuristic: use the root of the last chord (often the tonic)
-        // or the first major/major7 chord
+        // Use parsed key signature if available
+        if let keySignature = progression.keySignature {
+            return keySignature.shortName
+        }
+        // Fallback: use the root of the last chord
         if let lastEvent = progression.events.last {
             return lastEvent.chord.root.rawValue
         }

@@ -17,6 +17,7 @@ struct ParsedProgression {
     var composer: String?
     var style: String?
     var timeSignature: TimeSignature
+    var keySignature: KeySignature?  // Key center from MusicXML
     var divisions: Int  // Divisions per quarter note
     var events: [ChordEvent]
     var tempo: Double
@@ -72,11 +73,25 @@ Expanded: A | A | B | A₁ | A | A | B | A₂ | ...
 - `<ending type="start|stop" number="1|2">`: First/second endings
 - `<rehearsal>`: Section markers (A, B, C)
 
+### Key Signature Elements
+- `<key>`: Contains key signature information
+  - `<fifths>`: Circle of fifths position (0=C, 1=G, -1=F, 2=D, -2=Bb, etc.)
+  - `<mode>`: `major` or `minor`
+
+| fifths | Major Key | Minor Key |
+|--------|-----------|-----------|
+| 0      | C         | Am        |
+| +1     | G         | Em        |
+| -1     | F         | Dm        |
+| +2     | D         | Bm        |
+| -2     | Bb        | Gm        |
+
 ### Metadata Elements
 - `<work-title>`: Song title
 - `<creator type="composer">`: Composer name
 - `<creator type="lyricist">`: Style (iReal Pro convention)
 - `<time>`: Time signature (`<beats>` and `<beat-type>`)
+- `<key>`: Key signature (`<fifths>` and `<mode>`)
 - `<divisions>`: Divisions per quarter note (for position calculation)
 
 ## Chord Quality Mapping

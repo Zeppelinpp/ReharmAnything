@@ -327,6 +327,50 @@ struct Voicing: Equatable {
     }
 }
 
+// MARK: - Key Signature
+
+/// Key signature parsed from MusicXML
+struct KeySignature: Codable, Equatable {
+    let fifths: Int      // Circle of fifths position: 0=C, 1=G, -1=F, etc.
+    let mode: KeyMode    // Major or minor
+    
+    enum KeyMode: String, Codable {
+        case major
+        case minor
+    }
+    
+    /// Get the key center note name
+    var keyCenter: NoteName {
+        // fifths maps to: ..., -2=Bb, -1=F, 0=C, 1=G, 2=D, ...
+        let majorKeyPitchClasses = [0, 7, 2, 9, 4, 11, 6, 1, 8, 3, 10, 5]  // C, G, D, A, E, B, F#, C#/Db, Ab, Eb, Bb, F
+        
+        let index: Int
+        if fifths >= 0 {
+            index = fifths % 12
+        } else {
+            index = (12 + (fifths % 12)) % 12
+        }
+        
+        let majorRoot = majorKeyPitchClasses[index]
+        
+        // For minor keys, the root is 3 semitones below the relative major
+        let rootPitchClass = mode == .minor ? (majorRoot - 3 + 12) % 12 : majorRoot
+        return NoteName.from(pitchClass: rootPitchClass)
+    }
+    
+    /// Display string for the key (e.g., "C Major", "A Minor")
+    var displayName: String {
+        "\(keyCenter.rawValue) \(mode == .major ? "Major" : "Minor")"
+    }
+    
+    /// Short display (e.g., "C", "Am")
+    var shortName: String {
+        mode == .major ? keyCenter.rawValue : "\(keyCenter.rawValue)m"
+    }
+    
+    static let cMajor = KeySignature(fifths: 0, mode: .major)
+}
+
 // MARK: - Section Marker
 
 /// Section marker (A, B, C, etc.) for chart navigation
@@ -378,10 +422,11 @@ struct ChordProgression: Identifiable, Codable {
     var events: [ChordEvent]
     var tempo: Double // BPM
     var timeSignature: TimeSignature
+    var keySignature: KeySignature?  // Key center from MusicXML
     var sectionMarkers: [SectionMarker]  // A, B, C section labels
     var repeats: [RepeatInfo]  // Repeat structures
     
-    init(title: String, events: [ChordEvent], tempo: Double = 120, timeSignature: TimeSignature = .common, composer: String? = nil, style: String? = nil, sectionMarkers: [SectionMarker] = [], repeats: [RepeatInfo] = []) {
+    init(title: String, events: [ChordEvent], tempo: Double = 120, timeSignature: TimeSignature = .common, keySignature: KeySignature? = nil, composer: String? = nil, style: String? = nil, sectionMarkers: [SectionMarker] = [], repeats: [RepeatInfo] = []) {
         self.id = UUID()
         self.title = title
         self.composer = composer
@@ -389,6 +434,7 @@ struct ChordProgression: Identifiable, Codable {
         self.events = events
         self.tempo = tempo
         self.timeSignature = timeSignature
+        self.keySignature = keySignature
         self.sectionMarkers = sectionMarkers
         self.repeats = repeats
     }

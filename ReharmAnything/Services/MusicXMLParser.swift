@@ -12,6 +12,7 @@ class MusicXMLParser {
         var composer: String?
         var style: String?
         var timeSignature: TimeSignature
+        var keySignature: KeySignature?  // Key center from MusicXML
         var divisions: Int  // Divisions per quarter note
         var events: [ChordEvent]
         var tempo: Double
@@ -24,6 +25,7 @@ class MusicXMLParser {
                 events: events,
                 tempo: tempo,
                 timeSignature: timeSignature,
+                keySignature: keySignature,
                 composer: composer,
                 style: style,
                 sectionMarkers: sectionMarkers,
@@ -197,6 +199,7 @@ class MusicXMLParser {
             composer: parsed.composer,
             style: parsed.style,
             timeSignature: parsed.timeSignature,
+            keySignature: parsed.keySignature,
             divisions: parsed.divisions,
             events: expandedEvents,
             tempo: parsed.tempo,
@@ -253,6 +256,7 @@ private class MusicXMLParserDelegate: NSObject, XMLParserDelegate {
         composer: nil,
         style: nil,
         timeSignature: .common,
+        keySignature: nil,
         divisions: 768,
         events: [],
         tempo: 120,
@@ -269,6 +273,7 @@ private class MusicXMLParserDelegate: NSObject, XMLParserDelegate {
     private var inHarmony = false
     private var inAttributes = false
     private var inTime = false
+    private var inKey = false
     private var inRoot = false
     private var inBass = false
     private var inDegree = false
@@ -292,6 +297,10 @@ private class MusicXMLParserDelegate: NSObject, XMLParserDelegate {
     // Time signature parsing
     private var timeBeats: Int?
     private var timeBeatType: Int?
+    
+    // Key signature parsing
+    private var keyFifths: Int?
+    private var keyMode: String?
     
     // Position tracking
     private var currentMeasure = 0
@@ -330,6 +339,10 @@ private class MusicXMLParserDelegate: NSObject, XMLParserDelegate {
             inAttributes = true
         case "time":
             inTime = true
+        case "key":
+            inKey = true
+            keyFifths = nil
+            keyMode = nil
         case "harmony":
             inHarmony = true
             resetCurrentHarmony()
@@ -456,6 +469,21 @@ private class MusicXMLParserDelegate: NSObject, XMLParserDelegate {
                 result.timeSignature = TimeSignature(beats: beats, beatType: beatType)
             }
             inTime = false
+        case "fifths":
+            if inKey, let fifths = Int(text) {
+                keyFifths = fifths
+            }
+        case "mode":
+            if inKey {
+                keyMode = text
+            }
+        case "key":
+            // Build KeySignature from fifths and mode
+            if let fifths = keyFifths {
+                let mode: KeySignature.KeyMode = (keyMode == "minor") ? .minor : .major
+                result.keySignature = KeySignature(fifths: fifths, mode: mode)
+            }
+            inKey = false
         case "attributes":
             inAttributes = false
             
