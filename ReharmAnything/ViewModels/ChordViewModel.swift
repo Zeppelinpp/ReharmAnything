@@ -1,6 +1,24 @@
 import Foundation
 import SwiftUI
 import Combine
+import UniformTypeIdentifiers
+
+// Recent import record
+struct RecentImport: Codable, Identifiable, Equatable {
+    let id: UUID
+    let fileName: String
+    let title: String
+    let importDate: Date
+    let bookmarkData: Data?
+    
+    init(fileName: String, title: String, bookmarkData: Data? = nil) {
+        self.id = UUID()
+        self.fileName = fileName
+        self.title = title
+        self.importDate = Date()
+        self.bookmarkData = bookmarkData
+    }
+}
 
 @MainActor
 class ChordViewModel: ObservableObject {
@@ -24,17 +42,24 @@ class ChordViewModel: ObservableObject {
     @Published var selectedPattern: RhythmPattern?
     @Published var humanizationEnabled = true
     @Published var selectedPreset: HumanizationPreset = .natural
+    @Published var clickEnabled = false
     
     // Import state
     @Published var inputText = ""
     @Published var importError: String?
     @Published var isImporting = false
+    @Published var showingFilePicker = false
+    @Published var recentImports: [RecentImport] = []
+    
+    private let recentImportsKey = "recentMusicXMLImports"
+    private let maxRecentImports = 10
     
     // Analysis
     @Published var voiceLeadingAnalysis: VoiceLeadingAnalysis?
     
     // Services
     private let parser = IrealParser()
+    private let musicXMLParser = MusicXMLParser()
     private let reharmManager = ReharmManager.shared
     private let voicingGenerator = VoicingGenerator()
     private let voiceLeadingOptimizer = VoiceLeadingOptimizer()
@@ -42,10 +67,12 @@ class ChordViewModel: ObservableObject {
     private var playbackEngine: HumanizedPlaybackEngine?
     
     private var cancellables = Set<AnyCancellable>()
+    private var previewStopTask: DispatchWorkItem?
     
     init() {
         playbackEngine = HumanizedPlaybackEngine(soundManager: soundManager)
         setupBindings()
+        loadRecentImports()
         
         // Set default style
         selectedPattern = RhythmPatternLibrary.shared.getPatterns(for: .swing).first
@@ -87,6 +114,11 @@ class ChordViewModel: ObservableObject {
         } else {
             playbackEngine?.applyPreset(.robotic)
         }
+    }
+    
+    func toggleClick() {
+        clickEnabled.toggle()
+        playbackEngine?.clickEnabled = clickEnabled
     }
     
     var availablePatterns: [RhythmPattern] {
@@ -135,10 +167,121 @@ class ChordViewModel: ObservableObject {
         }
     }
     
+    // Import from MusicXML file
+    func importMusicXML(from url: URL) {
+        importError = nil
+        isImporting = true
+        
+        // Ensure we can access the file
+        guard url.startAccessingSecurityScopedResource() else {
+            importError = "Cannot access the selected file."
+            isImporting = false
+            return
+        }
+        
+        defer {
+            url.stopAccessingSecurityScopedResource()
+        }
+        
+        do {
+            let parsed = try musicXMLParser.parse(url: url)
+            let progression = parsed.toChordProgression()
+            setProgression(progression)
+            
+            // Save bookmark for recent imports
+            let bookmarkData = try? url.bookmarkData(options: .minimalBookmark, includingResourceValuesForKeys: nil, relativeTo: nil)
+            addRecentImport(fileName: url.lastPathComponent, title: progression.title, bookmarkData: bookmarkData)
+            
+            isImporting = false
+        } catch {
+            importError = "Failed to parse MusicXML: \(error.localizedDescription)"
+            isImporting = false
+        }
+    }
+    
+    // Import from recent import record
+    func importFromRecent(_ recent: RecentImport) {
+        guard let bookmarkData = recent.bookmarkData else {
+            importError = "Cannot access this file anymore."
+            return
+        }
+        
+        var isStale = false
+        guard let url = try? URL(resolvingBookmarkData: bookmarkData, options: [], relativeTo: nil, bookmarkDataIsStale: &isStale) else {
+            importError = "Cannot resolve file location."
+            removeRecentImport(recent)
+            return
+        }
+        
+        if isStale {
+            removeRecentImport(recent)
+            importError = "File location has changed. Please import again."
+            return
+        }
+        
+        importMusicXML(from: url)
+    }
+    
+    // MARK: - Recent Imports Management
+    
+    private func loadRecentImports() {
+        guard let data = UserDefaults.standard.data(forKey: recentImportsKey),
+              let imports = try? JSONDecoder().decode([RecentImport].self, from: data) else {
+            return
+        }
+        recentImports = imports
+    }
+    
+    private func saveRecentImports() {
+        guard let data = try? JSONEncoder().encode(recentImports) else { return }
+        UserDefaults.standard.set(data, forKey: recentImportsKey)
+    }
+    
+    private func addRecentImport(fileName: String, title: String, bookmarkData: Data?) {
+        let newImport = RecentImport(fileName: fileName, title: title, bookmarkData: bookmarkData)
+        
+        // Remove duplicate if exists
+        recentImports.removeAll { $0.fileName == fileName }
+        
+        // Add to beginning
+        recentImports.insert(newImport, at: 0)
+        
+        // Keep only maxRecentImports
+        if recentImports.count > maxRecentImports {
+            recentImports = Array(recentImports.prefix(maxRecentImports))
+        }
+        
+        saveRecentImports()
+    }
+    
+    func removeRecentImport(_ recent: RecentImport) {
+        recentImports.removeAll { $0.id == recent.id }
+        saveRecentImports()
+    }
+    
+    func clearRecentImports() {
+        recentImports.removeAll()
+        saveRecentImports()
+    }
+    
+    // Show file picker
+    func showMusicXMLPicker() {
+        showingFilePicker = true
+    }
+    
     // Set progression and analyze
     private func setProgression(_ progression: ChordProgression) {
         var prog = progression
-        prog = ChordProgression(title: prog.title, events: prog.events, tempo: tempo)
+        prog = ChordProgression(
+            title: prog.title,
+            events: prog.events,
+            tempo: tempo,
+            timeSignature: prog.timeSignature,
+            composer: prog.composer,
+            style: prog.style,
+            sectionMarkers: prog.sectionMarkers,
+            repeats: prog.repeats
+        )
         
         originalProgression = prog
         reharmTargets = parser.identifyReharmTargets(in: prog)
@@ -167,20 +310,51 @@ class ChordViewModel: ObservableObject {
         guard let original = originalProgression else { return }
         guard selectedStrategy < reharmManager.availableStrategies.count else { return }
         
+        let wasPlaying = isPlaying
+        if wasPlaying {
+            stop()
+        }
+        
         let strategy = reharmManager.availableStrategies[selectedStrategy]
         let reharmed = reharmManager.applyToAllDominants(progression: original, strategy: strategy)
         
+        // Force UI update
+        objectWillChange.send()
+        
         reharmedProgression = reharmed
+        
+        // Update reharm targets for the new progression
+        reharmTargets = parser.identifyReharmTargets(in: reharmed)
         
         // Regenerate voicings for reharmed progression
         generateVoicings(for: reharmed)
+        
+        // Resume playback if was playing
+        if wasPlaying {
+            play()
+        }
     }
     
     // Reset to original
     func resetToOriginal() {
         guard let original = originalProgression else { return }
+        
+        let wasPlaying = isPlaying
+        if wasPlaying {
+            stop()
+        }
+        
         reharmedProgression = nil
+        
+        // Restore reharm targets for original progression
+        reharmTargets = parser.identifyReharmTargets(in: original)
+        
         generateVoicings(for: original)
+        
+        // Resume playback if was playing
+        if wasPlaying {
+            play()
+        }
     }
     
     // Playback controls
@@ -225,7 +399,16 @@ class ChordViewModel: ObservableObject {
         tempo = newTempo
         
         if var progression = reharmedProgression ?? originalProgression {
-            progression = ChordProgression(title: progression.title, events: progression.events, tempo: newTempo)
+            progression = ChordProgression(
+                title: progression.title,
+                events: progression.events,
+                tempo: newTempo,
+                timeSignature: progression.timeSignature,
+                composer: progression.composer,
+                style: progression.style,
+                sectionMarkers: progression.sectionMarkers,
+                repeats: progression.repeats
+            )
             if reharmedProgression != nil {
                 reharmedProgression = progression
             } else {
@@ -253,13 +436,26 @@ class ChordViewModel: ObservableObject {
     // Preview single chord
     func previewChord(at index: Int) {
         guard index < currentVoicings.count else { return }
+        
+        // Cancel previous preview stop task
+        previewStopTask?.cancel()
+        
         soundManager.stopAll()
         soundManager.playChord(currentVoicings[index])
         
         // Stop after 2 seconds
-        DispatchQueue.main.asyncAfter(deadline: .now() + 2) { [weak self] in
+        let task = DispatchWorkItem { [weak self] in
             self?.soundManager.stopAll()
         }
+        previewStopTask = task
+        DispatchQueue.main.asyncAfter(deadline: .now() + 2, execute: task)
+    }
+    
+    // Stop preview immediately
+    func stopPreview() {
+        previewStopTask?.cancel()
+        previewStopTask = nil
+        soundManager.stopAll()
     }
     
     // Get voicing details for display

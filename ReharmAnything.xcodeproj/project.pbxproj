@@ -26,11 +26,13 @@
 		E81234560015 /* MusicHumanizer.swift in Sources */ = {isa = PBXBuildFile; fileRef = E81234550015 /* MusicHumanizer.swift */; };
 		E81234560016 /* RhythmPatternLibrary.swift in Sources */ = {isa = PBXBuildFile; fileRef = E81234550016 /* RhythmPatternLibrary.swift */; };
 		E81234560017 /* HumanizedPlaybackEngine.swift in Sources */ = {isa = PBXBuildFile; fileRef = E81234550017 /* HumanizedPlaybackEngine.swift */; };
+		E81234560018 /* MusicXMLParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = E81234550018 /* MusicXMLParser.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		7552FF712EF4175200A553E7 /* jRhodes3.sf2 */ = {isa = PBXFileReference; lastKnownFileType = file; path = jRhodes3.sf2; sourceTree = "<group>"; };
 		7552FF732EF418AA00A553E7 /* UprightPianoKW-20220221.sf2 */ = {isa = PBXFileReference; lastKnownFileType = file; path = "UprightPianoKW-20220221.sf2"; sourceTree = "<group>"; };
+		E81234550019 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		E81234550000 /* ReharmAnything.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ReharmAnything.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		E81234550001 /* ReharmAnythingApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReharmAnythingApp.swift; sourceTree = "<group>"; };
 		E81234550002 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -49,6 +51,7 @@
 		E81234550015 /* MusicHumanizer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MusicHumanizer.swift; sourceTree = "<group>"; };
 		E81234550016 /* RhythmPatternLibrary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RhythmPatternLibrary.swift; sourceTree = "<group>"; };
 		E81234550017 /* HumanizedPlaybackEngine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HumanizedPlaybackEngine.swift; sourceTree = "<group>"; };
+		E81234550018 /* MusicXMLParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MusicXMLParser.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -82,6 +85,7 @@
 				E81234530007 /* Audio */,
 				E81234530008 /* Theme */,
 				E81234550003 /* Assets.xcassets */,
+				E81234550019 /* Info.plist */,
 				7552FF712EF4175200A553E7 /* jRhodes3.sf2 */,
 				7552FF732EF418AA00A553E7 /* UprightPianoKW-20220221.sf2 */,
 			);
@@ -128,6 +132,7 @@
 				E81234550006 /* VoicingGenerator.swift */,
 				E81234550007 /* VoiceLeading.swift */,
 				E81234550009 /* IrealParser.swift */,
+				E81234550018 /* MusicXMLParser.swift */,
 			);
 			path = Services;
 			sourceTree = "<group>";
@@ -239,6 +244,7 @@
 				E81234560015 /* MusicHumanizer.swift in Sources */,
 				E81234560016 /* RhythmPatternLibrary.swift in Sources */,
 				E81234560017 /* HumanizedPlaybackEngine.swift in Sources */,
+				E81234560018 /* MusicXMLParser.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -375,6 +381,7 @@
 				DEVELOPMENT_TEAM = J3VT8T4HXY;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = ReharmAnything/Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -404,6 +411,7 @@
 				DEVELOPMENT_TEAM = J3VT8T4HXY;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = ReharmAnything/Info.plist;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
