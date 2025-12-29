@@ -1464,5 +1464,5 @@ struct RoundedCorner: Shape {
 }
 
 #Preview {
-    ReharmView(viewModel: ChordViewModel())
+    ReharmView(viewModel: ChordViewModel(), isZenMode: .constant(false))
 }
