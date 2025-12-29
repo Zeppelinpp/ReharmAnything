@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ReharmView: View {
     @ObservedObject var viewModel: ChordViewModel
+    @Binding var isZenMode: Bool
     @State private var selectedChordIndex: Int? = nil
     @Environment(\.colorScheme) var colorScheme
     
@@ -20,6 +21,183 @@ struct ReharmView: View {
     }
     
     var body: some View {
+        VStack(spacing: 0) {
+            if isZenMode {
+                // Zen Mode: Full screen chord view with piano
+                zenModeContent
+            } else {
+                // Normal Mode
+                normalModeContent
+            }
+            
+            // Playback controls (always at bottom)
+            playbackControlsSection
+        }
+        .background(NordicTheme.Dynamic.background(colorScheme))
+    }
+    
+    // MARK: - Zen Mode Content
+    
+    private var zenModeContent: some View {
+        VStack(spacing: 0) {
+            // Minimal header in zen mode
+            zenModeHeader
+            
+            // Full screen chord chart and piano
+            GeometryReader { geometry in
+                VStack(spacing: 0) {
+                    // Chord progression - takes most of the space
+                    if let progression = viewModel.activeProgression {
+                        ScrollView {
+                            progressionSection(progression)
+                                .id(progression.id)
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 12)
+                        }
+                        .frame(height: geometry.size.height * 0.55)
+                    } else {
+                        Spacer()
+                            .frame(height: geometry.size.height * 0.55)
+                    }
+                    
+                    // Piano keyboard - larger in zen mode
+                    if let index = displayedChordIndex,
+                       !viewModel.currentVoicings.isEmpty,
+                       index < viewModel.currentVoicings.count {
+                        zenModePianoSection(voicing: viewModel.currentVoicings[index], chordIndex: index)
+                            .frame(height: geometry.size.height * 0.45)
+                            .transition(.opacity.combined(with: .scale(scale: 0.95)))
+                            .animation(.easeInOut(duration: 0.15), value: index)
+                    } else {
+                        // Show empty piano when no chord selected
+                        emptyPianoSection
+                            .frame(height: geometry.size.height * 0.45)
+                    }
+                }
+            }
+        }
+    }
+    
+    private var zenModeHeader: some View {
+        HStack {
+            // Exit zen mode button
+            Button(action: { 
+                withAnimation(.easeInOut(duration: 0.3)) {
+                    isZenMode = false 
+                }
+            }) {
+                HStack(spacing: 6) {
+                    Image(systemName: "chevron.left")
+                        .font(.system(size: 12, weight: .semibold))
+                    Text("Exit")
+                        .font(.system(size: 13, weight: .medium))
+                }
+                .foregroundColor(NordicTheme.Dynamic.textSecondary(colorScheme))
+            }
+            
+            Spacer()
+            
+            // Song title
+            VStack(spacing: 2) {
+                Text(viewModel.activeProgression?.title ?? "No Chart")
+                    .font(.system(size: 16, weight: .semibold, design: .rounded))
+                    .foregroundColor(NordicTheme.Dynamic.text(colorScheme))
+                
+                // Current chord display
+                if let index = displayedChordIndex,
+                   let progression = viewModel.activeProgression,
+                   index < progression.events.count {
+                    Text(progression.events[index].chord.displayName)
+                        .font(.system(size: 24, weight: .bold, design: .serif))
+                        .foregroundColor(NordicTheme.Colors.primary)
+                }
+            }
+            
+            Spacer()
+            
+            // Placeholder for symmetry
+            Color.clear
+                .frame(width: 50)
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 12)
+        .background(NordicTheme.Dynamic.surface(colorScheme))
+        .overlay(alignment: .bottom) {
+            Rectangle()
+                .fill(NordicTheme.Dynamic.border(colorScheme))
+                .frame(height: 0.5)
+        }
+    }
+    
+    private func zenModePianoSection(voicing: Voicing, chordIndex: Int) -> some View {
+        VStack(spacing: 12) {
+            // Chord name and voicing info
+            VStack(spacing: 4) {
+                Text(voicing.chord.displayName)
+                    .font(.system(size: 28, weight: .bold, design: .serif))
+                    .foregroundColor(NordicTheme.Dynamic.text(colorScheme))
+                
+                if let voicingType = voicing.voicingType {
+                    Text(voicingType.rawValue)
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundColor(NordicTheme.Colors.primary)
+                }
+                
+                // Hand separation display
+                let hands = voicing.handsDescription()
+                HStack(spacing: 24) {
+                    VStack(spacing: 2) {
+                        Text("L.H.")
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundColor(NordicTheme.Dynamic.textSecondary(colorScheme))
+                        Text(hands.left.isEmpty ? "-" : hands.left)
+                            .font(.system(size: 12, weight: .medium, design: .monospaced))
+                            .foregroundColor(NordicTheme.Dynamic.text(colorScheme))
+                    }
+                    VStack(spacing: 2) {
+                        Text("R.H.")
+                            .font(.system(size: 10, weight: .medium))
+                            .foregroundColor(NordicTheme.Dynamic.textSecondary(colorScheme))
+                        Text(hands.right.isEmpty ? "-" : hands.right)
+                            .font(.system(size: 12, weight: .medium, design: .monospaced))
+                            .foregroundColor(NordicTheme.Dynamic.text(colorScheme))
+                    }
+                }
+            }
+            .padding(.top, 8)
+            
+            // Large piano keyboard
+            PianoKeyboardView(highlightedNotes: Set(voicing.notes), colorScheme: colorScheme)
+                .frame(height: 140)
+                .padding(.horizontal, 8)
+                .padding(.bottom, 8)
+        }
+        .background(NordicTheme.Dynamic.surface(colorScheme))
+        .cornerRadius(16)
+        .padding(.horizontal, 16)
+        .padding(.bottom, 8)
+    }
+    
+    private var emptyPianoSection: some View {
+        VStack(spacing: 16) {
+            Image(systemName: "pianokeys")
+                .font(.system(size: 48))
+                .foregroundColor(NordicTheme.Dynamic.textSecondary(colorScheme).opacity(0.5))
+            
+            Text("Select or play a chord to see voicing")
+                .font(.system(size: 14, weight: .medium))
+                .foregroundColor(NordicTheme.Dynamic.textSecondary(colorScheme))
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(NordicTheme.Dynamic.surface(colorScheme))
+        .cornerRadius(16)
+        .padding(.horizontal, 16)
+        .padding(.bottom, 8)
+    }
+    
+    // MARK: - Normal Mode Content
+    
+    private var normalModeContent: some View {
         VStack(spacing: 0) {
             // Header with title
             headerSection
@@ -57,11 +235,7 @@ struct ReharmView: View {
                 .padding(.horizontal, 16)
                 .padding(.vertical, 12)
             }
-            
-            // Playback controls
-            playbackControlsSection
         }
-        .background(NordicTheme.Dynamic.background(colorScheme))
     }
     
     private var headerSection: some View {
@@ -662,6 +836,26 @@ struct ReharmView: View {
                             Circle()
                                 .fill(viewModel.clickEnabled 
                                     ? NordicTheme.Colors.highlight.opacity(colorScheme == .dark ? 0.2 : 0.1)
+                                    : NordicTheme.Dynamic.surfaceSecondary(colorScheme))
+                        )
+                }
+                
+                // Zen mode button
+                Button(action: { 
+                    withAnimation(.easeInOut(duration: 0.3)) {
+                        isZenMode.toggle() 
+                    }
+                }) {
+                    Image(systemName: isZenMode ? "rectangle.inset.filled" : "rectangle.expand.vertical")
+                        .font(.system(size: 12, weight: .medium))
+                        .foregroundColor(isZenMode 
+                            ? NordicTheme.Colors.tertiary 
+                            : NordicTheme.Dynamic.textSecondary(colorScheme))
+                        .frame(width: 32, height: 32)
+                        .background(
+                            Circle()
+                                .fill(isZenMode 
+                                    ? NordicTheme.Colors.tertiary.opacity(colorScheme == .dark ? 0.2 : 0.1)
                                     : NordicTheme.Dynamic.surfaceSecondary(colorScheme))
                         )
                 }

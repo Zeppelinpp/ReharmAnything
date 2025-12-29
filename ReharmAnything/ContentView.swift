@@ -4,6 +4,7 @@ struct ContentView: View {
     @StateObject private var viewModel = ChordViewModel()
     @State private var selectedTab = 0
     @State private var isInitialized = false
+    @State private var isZenMode = false
     @Environment(\.colorScheme) var colorScheme
     
     var body: some View {
@@ -13,27 +14,37 @@ struct ContentView: View {
                 .ignoresSafeArea()
             
             VStack(spacing: 0) {
-                // App header
-                appHeader
+                // App header (hidden in zen mode)
+                if !isZenMode {
+                    appHeader
+                }
                 
                 // Main content
                 TabView(selection: $selectedTab) {
                     ChordInputView(viewModel: viewModel)
                         .tag(0)
                     
-                    ReharmView(viewModel: viewModel)
+                    ReharmView(viewModel: viewModel, isZenMode: $isZenMode)
                         .tag(1)
                 }
                 .tabViewStyle(.page(indexDisplayMode: .never))
                 
-                // Custom tab bar - flush with bottom
-                customTabBar
+                // Custom tab bar - hidden in zen mode
+                if !isZenMode {
+                    customTabBar
+                }
             }
         }
         .task {
             if !isInitialized {
                 await viewModel.initializeAudio()
                 isInitialized = true
+            }
+        }
+        // Auto-switch to Reharm tab when entering zen mode
+        .onChange(of: isZenMode) { _, newValue in
+            if newValue && selectedTab != 1 {
+                selectedTab = 1
             }
         }
     }
