@@ -257,13 +257,18 @@ class MusicHumanizer {
             return library.getPattern(named: "Syncopated")
         }
         
-        // 1 chord per measure (whole bar): randomly choose whole note or syncopated
+        // 1 chord per measure (whole bar): weighted random selection
+        // Whole note (sustained) should be more common than syncopated
+        // Probability: 70% whole note, 30% syncopated
         if chordsInMeasure == 1 || chordDuration >= beatsPerMeasure - 0.1 {
-            let patterns = [
-                library.getPattern(named: "Whole Note"),
-                library.getPattern(named: "Syncopated")
-            ].compactMap { $0 }
-            return patterns.randomElement() ?? fallbackPattern
+            let random = Double.random(in: 0..<1)
+            if random < 0.7 {
+                // 70% chance: whole note (sustained through the measure)
+                return library.getPattern(named: "Whole Note")
+            } else {
+                // 30% chance: syncopated pattern
+                return library.getPattern(named: "Syncopated") ?? library.getPattern(named: "Whole Note")
+            }
         }
         
         return fallbackPattern
