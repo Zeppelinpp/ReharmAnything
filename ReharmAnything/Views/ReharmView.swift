@@ -45,7 +45,7 @@ struct ReharmView: View {
             playbackControlsSection
         }
         .background(NordicTheme.Dynamic.background(colorScheme))
-        .ignoresSafeArea(isZenMode ? .container : [], edges: .top)
+        .ignoresSafeArea(isZenMode ? .container : [], edges: [.top, .bottom])
     }
     
     // MARK: - Zen Mode Content
@@ -927,6 +927,7 @@ struct ReharmView: View {
             }
             .padding(.horizontal, 20)
             .padding(.vertical, 12)
+            .padding(.bottom, isZenMode ? 20 : 0) // Extra padding for home indicator in Zen mode
         }
         .background(NordicTheme.Dynamic.surface(colorScheme))
         .overlay(alignment: .top) {
@@ -934,8 +935,6 @@ struct ReharmView: View {
                 .fill(NordicTheme.Dynamic.border(colorScheme))
                 .frame(height: 0.5)
         }
-        .padding(.bottom, isZenMode ? 0 : 0) // Placeholder for safe area handling
-        .ignoresSafeArea(isZenMode ? .container : [], edges: .bottom)
     }
 }
 
