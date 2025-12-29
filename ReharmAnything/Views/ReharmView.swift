@@ -506,41 +506,69 @@ struct ReharmView: View {
                 .tint(NordicTheme.Colors.highlight)
             }
             
-            // Style selection - Toggle Picker
-            TogglePickerSection(
+            // Style selection - Dropdown Menu
+            DropdownPickerRow(
                 title: "Style",
-                options: viewModel.availableStyles.map { $0.rawValue },
-                selectedIndex: viewModel.availableStyles.firstIndex(of: viewModel.selectedStyle) ?? 0,
+                selectedValue: viewModel.selectedStyle.rawValue,
                 colorScheme: colorScheme,
                 accentColor: NordicTheme.Colors.highlight
-            ) { index in
-                viewModel.setMusicStyle(viewModel.availableStyles[index])
-            }
-            
-            // Rhythm Pattern selection - Toggle Picker
-            TogglePickerSection(
-                title: "Rhythm",
-                options: rhythmPatternOptions,
-                selectedIndex: selectedPatternIndex,
-                colorScheme: colorScheme,
-                accentColor: NordicTheme.Colors.highlight
-            ) { index in
-                if index == 0 {
-                    viewModel.setRhythmPattern(nil)
-                } else {
-                    viewModel.setRhythmPattern(viewModel.availablePatterns[index - 1])
+            ) {
+                ForEach(viewModel.availableStyles) { style in
+                    Button(action: { viewModel.setMusicStyle(style) }) {
+                        HStack {
+                            Text(style.rawValue)
+                            if viewModel.selectedStyle == style {
+                                Image(systemName: "checkmark")
+                            }
+                        }
+                    }
                 }
             }
             
-            // Feel selection - Toggle Picker
-            TogglePickerSection(
+            // Rhythm Pattern selection - Dropdown Menu
+            DropdownPickerRow(
+                title: "Rhythm",
+                selectedValue: selectedPatternName,
+                colorScheme: colorScheme,
+                accentColor: NordicTheme.Colors.highlight
+            ) {
+                Button(action: { viewModel.setRhythmPattern(nil) }) {
+                    HStack {
+                        Text("Sustained")
+                        if viewModel.selectedPattern == nil {
+                            Image(systemName: "checkmark")
+                        }
+                    }
+                }
+                ForEach(viewModel.availablePatterns) { pattern in
+                    Button(action: { viewModel.setRhythmPattern(pattern) }) {
+                        HStack {
+                            Text(pattern.name.replacingOccurrences(of: "\(viewModel.selectedStyle.rawValue) ", with: ""))
+                            if viewModel.selectedPattern?.id == pattern.id {
+                                Image(systemName: "checkmark")
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // Feel selection - Dropdown Menu
+            DropdownPickerRow(
                 title: "Feel",
-                options: viewModel.availablePresets.map { $0.rawValue },
-                selectedIndex: viewModel.availablePresets.firstIndex(of: viewModel.selectedPreset) ?? 0,
+                selectedValue: viewModel.selectedPreset.rawValue,
                 colorScheme: colorScheme,
                 accentColor: NordicTheme.Colors.primary
-            ) { index in
-                viewModel.setHumanizationPreset(viewModel.availablePresets[index])
+            ) {
+                ForEach(viewModel.availablePresets) { preset in
+                    Button(action: { viewModel.setHumanizationPreset(preset) }) {
+                        HStack {
+                            Text(preset.rawValue)
+                            if viewModel.selectedPreset == preset {
+                                Image(systemName: "checkmark")
+                            }
+                        }
+                    }
+                }
             }
         }
         .padding(16)
@@ -549,22 +577,12 @@ struct ReharmView: View {
         .opacity(viewModel.humanizationEnabled ? 1.0 : 0.6)
     }
     
-    // Computed properties for rhythm pattern picker
-    private var rhythmPatternOptions: [String] {
-        ["Sustained"] + viewModel.availablePatterns.map { 
-            $0.name.replacingOccurrences(of: "\(viewModel.selectedStyle.rawValue) ", with: "")
+    // Computed property for rhythm pattern name
+    private var selectedPatternName: String {
+        if let pattern = viewModel.selectedPattern {
+            return pattern.name.replacingOccurrences(of: "\(viewModel.selectedStyle.rawValue) ", with: "")
         }
-    }
-    
-    private var selectedPatternIndex: Int {
-        if viewModel.selectedPattern == nil {
-            return 0
-        }
-        if let pattern = viewModel.selectedPattern,
-           let index = viewModel.availablePatterns.firstIndex(where: { $0.id == pattern.id }) {
-            return index + 1
-        }
-        return 0
+        return "Sustained"
     }
     
     private var playbackControlsSection: some View {
@@ -1071,69 +1089,43 @@ struct VoicingTypeButton: View {
     }
 }
 
-// Toggle Picker Section - unified toggle-style selector
-struct TogglePickerSection: View {
+// Dropdown Picker Row - expandable menu selector
+struct DropdownPickerRow<MenuContent: View>: View {
     let title: String
-    let options: [String]
-    let selectedIndex: Int
+    let selectedValue: String
     let colorScheme: ColorScheme
     var accentColor: Color = NordicTheme.Colors.primary
-    let onSelect: (Int) -> Void
+    @ViewBuilder let menuContent: () -> MenuContent
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        HStack {
             Text(title)
-                .font(.system(size: 12, weight: .medium))
-                .foregroundColor(NordicTheme.Dynamic.textSecondary(colorScheme))
+                .font(.system(size: 13, weight: .medium))
+                .foregroundColor(NordicTheme.Dynamic.text(colorScheme))
             
-            HStack(spacing: 0) {
-                ForEach(Array(options.enumerated()), id: \.offset) { index, option in
-                    let isSelected = index == selectedIndex
-                    let isFirst = index == 0
-                    let isLast = index == options.count - 1
+            Spacer()
+            
+            Menu {
+                menuContent()
+            } label: {
+                HStack(spacing: 6) {
+                    Text(selectedValue)
+                        .font(.system(size: 13, weight: .medium))
+                        .foregroundColor(accentColor)
                     
-                    Button(action: { onSelect(index) }) {
-                        Text(option)
-                            .font(.system(size: 11, weight: isSelected ? .semibold : .regular))
-                            .foregroundColor(isSelected ? .white : NordicTheme.Dynamic.text(colorScheme))
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 8)
-                            .background(
-                                isSelected 
-                                    ? accentColor 
-                                    : NordicTheme.Dynamic.surfaceSecondary(colorScheme)
-                            )
-                    }
-                    .buttonStyle(.plain)
-                    .clipShape(
-                        RoundedCorner(
-                            radius: 8,
-                            corners: corners(isFirst: isFirst, isLast: isLast)
-                        )
-                    )
-                    
-                    // Separator between non-selected items
-                    if !isLast && !isSelected && (index + 1) != selectedIndex {
-                        Rectangle()
-                            .fill(NordicTheme.Dynamic.border(colorScheme))
-                            .frame(width: 0.5)
-                    }
+                    Image(systemName: "chevron.up.chevron.down")
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundColor(accentColor.opacity(0.7))
                 }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(accentColor.opacity(colorScheme == .dark ? 0.15 : 0.1))
+                )
             }
-            .background(NordicTheme.Dynamic.surfaceSecondary(colorScheme))
-            .clipShape(RoundedRectangle(cornerRadius: 8))
-            .overlay(
-                RoundedRectangle(cornerRadius: 8)
-                    .stroke(NordicTheme.Dynamic.border(colorScheme), lineWidth: 0.5)
-            )
         }
-    }
-    
-    private func corners(isFirst: Bool, isLast: Bool) -> UIRectCorner {
-        if isFirst && isLast { return .allCorners }
-        if isFirst { return [.topLeft, .bottomLeft] }
-        if isLast { return [.topRight, .bottomRight] }
-        return []
+        .padding(.vertical, 4)
     }
 }
 
