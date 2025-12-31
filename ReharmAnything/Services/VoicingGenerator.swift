@@ -820,6 +820,113 @@ class VoicingGenerator {
     }
 }
 
+// MARK: - Variant Voicing Generation
+
+extension VoicingGenerator {
+    
+    /// Generate a variant voicing with added extension notes
+    /// Used for the second hit when a measure has one chord with two hits
+    /// Constraint: Only modify 1-2 notes to maintain voice leading smoothness
+    func generateVariantVoicing(
+        baseVoicing: Voicing,
+        chord: Chord,
+        extensions: [String]? = nil
+    ) -> Voicing {
+        // Determine which extensions to use
+        let extensionsToUse: [String]
+        if let explicit = extensions, !explicit.isEmpty {
+            extensionsToUse = explicit
+        } else if !chord.extensions.isEmpty {
+            // Use chord's existing extensions
+            extensionsToUse = chord.extensions
+        } else {
+            // Pick random suggested extension for this chord quality
+            let suggestions = chord.quality.suggestedExtensions
+            extensionsToUse = suggestions.randomElement() ?? []
+        }
+        
+        guard !extensionsToUse.isEmpty else { return baseVoicing }
+        
+        // Get extension intervals
+        let extensionIntervals = extensionsToUse.compactMap { ChordQuality.extensionInterval($0) }
+        guard !extensionIntervals.isEmpty else { return baseVoicing }
+        
+        var newNotes = baseVoicing.notes
+        let rootPitchClass = chord.root.pitchClass
+        
+        // Strategy: Replace one note (preferring root or 5th) with an extension
+        // This keeps voicing size constant and maintains voice leading
+        for interval in extensionIntervals.prefix(1) { // Only add one extension
+            let extensionPitchClass = (rootPitchClass + interval) % 12
+            
+            // Check if this extension already exists in voicing
+            if newNotes.contains(where: { $0 % 12 == extensionPitchClass }) {
+                continue
+            }
+            
+            // Find a note to replace (prefer root or 5th, they're less essential)
+            let fifthPitchClass = (rootPitchClass + 7) % 12
+            
+            // Try to replace 5th first
+            if let fifthIndex = newNotes.firstIndex(where: { $0 % 12 == fifthPitchClass }) {
+                let oldNote = newNotes[fifthIndex]
+                let octave = oldNote / 12
+                // Place extension in similar register
+                var newNote = octave * 12 + extensionPitchClass
+                // Adjust octave if needed to stay close to original note
+                if newNote - oldNote > 6 { newNote -= 12 }
+                if oldNote - newNote > 6 { newNote += 12 }
+                // Ensure in valid range
+                if newNote >= 36 && newNote <= 96 {
+                    newNotes[fifthIndex] = newNote
+                }
+            }
+            // If no 5th, try to replace root (if there's more than one root/octave)
+            else {
+                let rootNotes = newNotes.enumerated().filter { $0.element % 12 == rootPitchClass }
+                if rootNotes.count > 1, let (index, oldNote) = rootNotes.last {
+                    let octave = oldNote / 12
+                    var newNote = octave * 12 + extensionPitchClass
+                    if newNote - oldNote > 6 { newNote -= 12 }
+                    if oldNote - newNote > 6 { newNote += 12 }
+                    if newNote >= 36 && newNote <= 96 {
+                        newNotes[index] = newNote
+                    }
+                }
+                // Last resort: add extension to highest position
+                else if let highest = newNotes.max() {
+                    let octave = highest / 12
+                    var newNote = octave * 12 + extensionPitchClass
+                    // Place above existing notes if possible
+                    while newNote <= highest && newNote + 12 <= 96 {
+                        newNote += 12
+                    }
+                    // Replace highest note if extension is close
+                    if abs(newNote - highest) <= 4, let idx = newNotes.firstIndex(of: highest) {
+                        if newNote >= 36 && newNote <= 96 {
+                            newNotes[idx] = newNote
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Rebuild hand assignments
+        let sorted = newNotes.sorted()
+        let splitPoint = 60 // Middle C
+        let leftHand = sorted.filter { $0 < splitPoint }
+        let rightHand = sorted.filter { $0 >= splitPoint }
+        
+        return Voicing(
+            chord: chord,
+            notes: sorted,
+            voicingType: baseVoicing.voicingType,
+            leftHandNotes: leftHand.isEmpty ? [sorted.first!] : leftHand,
+            rightHandNotes: rightHand.isEmpty ? [sorted.last!] : rightHand
+        )
+    }
+}
+
 // MARK: - Extended Voicing Model
 
 extension Voicing {

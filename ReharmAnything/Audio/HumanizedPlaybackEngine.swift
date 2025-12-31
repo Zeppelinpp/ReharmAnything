@@ -302,8 +302,9 @@ class HumanizedPlaybackEngine: ObservableObject {
             // Skip already played notes
             guard !playedNoteIndices.contains(index) else { continue }
             
-            // Check if note should start
-            if note.position <= currentBeat && note.position + note.duration > currentBeat {
+            // Check if note should start - play if we've reached or passed the start time
+            // Use a small tolerance to catch notes even if frame rate drops
+            if note.position <= currentBeat + 0.05 {
                 playNote(note)
                 playedNoteIndices.insert(index)
             }
@@ -312,8 +313,8 @@ class HumanizedPlaybackEngine: ObservableObject {
             if note.position > currentBeat + 0.1 { break }
         }
         
-        // Stop notes that have ended
-        stopExpiredNotes(currentBeat: currentBeat)
+        // Notes are now auto-released by SharedAudioEngine based on duration.
+        // We no longer need stopExpiredNotes() polling.
     }
     
     private func playNote(_ note: NoteEvent) {
@@ -330,20 +331,6 @@ class HumanizedPlaybackEngine: ObservableObject {
             channel: note.channel,
             duration: durationInSeconds
         )
-    }
-    
-    private func stopExpiredNotes(currentBeat: Double) {
-        // Notes are now auto-released by the engine based on duration
-        // This method kept for compatibility but release is handled by SharedAudioEngine
-        for index in playedNoteIndices {
-            guard index < scheduledNotes.count else { continue }
-            let note = scheduledNotes[index]
-            
-            // Only force stop if significantly past duration (safety check)
-            if currentBeat >= note.position + note.duration + 0.5 {
-                SharedAudioEngine.shared.stopNote(note.midiNote, channel: note.channel)
-            }
-        }
     }
     
     func seekTo(beat: Double) {

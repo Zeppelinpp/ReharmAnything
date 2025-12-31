@@ -153,6 +153,47 @@ enum ChordQuality: String, Codable, CaseIterable {
             return false
         }
     }
+    
+    /// Suggested extensions for variant voicings
+    /// Returns array of possible extension combinations for this chord quality
+    var suggestedExtensions: [[String]] {
+        switch self {
+        case .major, .major7, .major9:
+            // maj chord: 9, 6(13)
+            return [["9"], ["6"], ["9", "6"]]
+        case .minor, .minor7, .minor9:
+            // minor-7 chord: 9, 11
+            return [["9"], ["11"], ["9", "11"]]
+        case .dominant7, .dominant9, .dominant13:
+            // dominant-7 chord: 9, 13
+            return [["9"], ["13"], ["9", "13"]]
+        case .altered:
+            // alt chord: b9, #9, b13(#5), #11(b5)
+            return [["b9"], ["#9"], ["b13"], ["#11"], ["b9", "#11"]]
+        case .halfDiminished:
+            // half-dim: 9, 11
+            return [["9"], ["11"]]
+        case .sus4:
+            // sus4: 9
+            return [["9"]]
+        default:
+            return []
+        }
+    }
+    
+    /// Get the semitone interval for an extension string
+    static func extensionInterval(_ ext: String) -> Int? {
+        switch ext {
+        case "9": return 14      // Major 9th
+        case "b9": return 13     // Minor 9th
+        case "#9": return 15     // Augmented 9th
+        case "11": return 17     // Perfect 11th
+        case "#11": return 18    // Augmented 11th
+        case "6", "13": return 21 // Major 13th (6th up an octave)
+        case "b13": return 20    // Minor 13th
+        default: return nil
+        }
+    }
 }
 
 struct Chord: Identifiable, Codable, Equatable {

@@ -49,21 +49,44 @@ struct RhythmPattern: Identifiable {
         self.description = description
     }
     
-    /// Apply swing to hit positions
+    /// Apply swing to hit positions AND durations
+    /// Swing ratio: swingFactor 0.17 → upbeat at 0.67 (2:1 triplet feel)
     func withSwing() -> RhythmPattern {
         guard swingFactor > 0 else { return self }
         
-        let swungHits = hits.map { hit -> RhythmHit in
+        // Calculate swing timing
+        let swungUpbeatPosition = 0.5 + swingFactor  // e.g., 0.67 for triplet swing
+        let downbeatDuration = swungUpbeatPosition   // Downbeat extends to upbeat start
+        let upbeatDuration = 1.0 - swungUpbeatPosition // Upbeat is shorter
+        
+        var swungHits: [RhythmHit] = []
+        
+        for hit in hits {
             var newHit = hit
             let beatFraction = hit.position.truncatingRemainder(dividingBy: 1.0)
+            let beatBase = floor(hit.position)
             
-            // Swing the off-beats (0.5 position within each beat)
+            // Adjust upbeat (originally at 0.5 within the beat)
             if abs(beatFraction - 0.5) < 0.1 {
-                let beatBase = floor(hit.position)
-                let swungPosition = 0.5 + swingFactor  // e.g., 0.5 -> 0.67 for triplet swing
-                newHit.position = beatBase + swungPosition
+                newHit.position = beatBase + swungUpbeatPosition
+                // Adjust duration if it was a standard eighth note (0.5)
+                if let dur = newHit.duration, abs(dur - 0.5) < 0.1 {
+                    newHit = RhythmHit(newHit.position, velocity: newHit.velocity, type: newHit.type, duration: upbeatDuration)
+                }
             }
-            return newHit
+            // Adjust downbeat duration if followed by upbeat in same beat
+            else if abs(beatFraction) < 0.1 {
+                let hasFollowingUpbeat = hits.contains { h in
+                    let hFraction = h.position.truncatingRemainder(dividingBy: 1.0)
+                    let hBase = floor(h.position)
+                    return hBase == beatBase && abs(hFraction - 0.5) < 0.1
+                }
+                if hasFollowingUpbeat, let dur = newHit.duration, abs(dur - 0.5) < 0.1 {
+                    newHit = RhythmHit(newHit.position, velocity: newHit.velocity, type: newHit.type, duration: downbeatDuration)
+                }
+            }
+            
+            swungHits.append(newHit)
         }
         
         return RhythmPattern(

@@ -71,6 +71,9 @@ class SharedAudioEngine: ObservableObject {
     private var releaseTimers: [MIDINote: Timer] = [:]
     private var loadedSF2: String?
     
+    // Track note "generation" to prevent stale asyncAfter from stopping new notes
+    private var noteGeneration: [MIDINote: Int] = [:]
+    
     // ADSR envelope settings
     var adsr: ADSREnvelope = .piano
     
@@ -219,18 +222,13 @@ class SharedAudioEngine: ObservableObject {
         fadeOutTimers[note]?.invalidate()
         fadeOutTimers.removeValue(forKey: note)
         
+        // Increment generation to invalidate any pending asyncAfter releases
+        noteGeneration[note, default: 0] += 1
+        
         // Apply attack envelope - start slightly softer and ramp up
         let attackVelocity = UInt8(Double(velocity) * 0.85)
         sampler?.startNote(UInt8(note), withVelocity: attackVelocity, onChannel: channel)
         activeNotes.insert(note)
-        
-        // Simulate attack phase by sending a slightly higher velocity after attack time
-        if adsr.attack > 0.002 {
-            DispatchQueue.main.asyncAfter(deadline: .now() + adsr.attack) { [weak self] in
-                guard self?.activeNotes.contains(note) == true else { return }
-                // Note is already playing, attack phase complete
-            }
-        }
     }
     
     /// Play note with explicit duration (schedules automatic release)
@@ -246,21 +244,29 @@ class SharedAudioEngine: ObservableObject {
     
     /// Stop note with natural release envelope
     func stopNoteWithRelease(_ note: MIDINote, channel: UInt8) {
-        guard activeNotes.contains(note) else { return }
+        // Cancel any pending scheduled release timer
+        releaseTimers[note]?.invalidate()
+        releaseTimers.removeValue(forKey: note)
         
-        // Apply release envelope - gradual fade out
-        let releaseSteps = 5
-        let stepDuration = adsr.release / Double(releaseSteps)
+        guard activeNotes.contains(note) else {
+            // Note was already released or stopAllNotes was called
+            return
+        }
         
-        for step in 0..<releaseSteps {
-            let delay = stepDuration * Double(step)
-            DispatchQueue.main.asyncAfter(deadline: .now() + delay) { [weak self] in
-                guard self?.activeNotes.contains(note) == true else { return }
-                if step == releaseSteps - 1 {
-                    // Final step: actually stop the note
-                    self?.sampler?.stopNote(UInt8(note), onChannel: channel)
-                    self?.activeNotes.remove(note)
-                }
+        // Capture current generation to check if note was re-triggered
+        let currentGeneration = noteGeneration[note, default: 0]
+        
+        // The sampler will handle the natural decay of the sound
+        let releaseDelay = adsr.release
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + releaseDelay) { [weak self] in
+            guard let self = self else { return }
+            
+            // Check if note was re-triggered (generation changed)
+            if self.noteGeneration[note, default: 0] == currentGeneration &&
+               self.activeNotes.contains(note) {
+                self.sampler?.stopNote(UInt8(note), onChannel: channel)
+                self.activeNotes.remove(note)
             }
         }
     }
@@ -289,7 +295,12 @@ class SharedAudioEngine: ObservableObject {
         for timer in releaseTimers.values { timer.invalidate() }
         releaseTimers.removeAll()
         
-        // Stop all active notes immediately with short fade
+        // Increment ALL generations (not just active notes) to invalidate any pending asyncAfter
+        for note in 0...127 {
+            noteGeneration[note, default: 0] += 1
+        }
+        
+        // Stop all active notes immediately
         let notesToStop = activeNotes
         activeNotes.removeAll()
         
@@ -304,7 +315,9 @@ class SharedAudioEngine: ObservableObject {
         for timer in releaseTimers.values { timer.invalidate() }
         releaseTimers.removeAll()
         
+        // Increment all generations to invalidate pending asyncAfter
         for note in 0...127 {
+            noteGeneration[note, default: 0] += 1
             sampler?.stopNote(UInt8(note), onChannel: 0)
         }
         activeNotes.removeAll()

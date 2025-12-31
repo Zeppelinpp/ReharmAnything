@@ -60,6 +60,12 @@ struct HumanizerConfig {
     var rollChords: Bool = false              // Arpeggiate chords slightly
     var rollSpeed: Double = 0.02              // Time between rolled notes
     
+    // Jazz anticipation: play next measure's chord on beat 4 upbeat (3.5)
+    var anticipationProbability: Double = 0.4  // Probability of anticipating next chord
+    
+    // Variant voicing: use different voicing for second hit in same-chord measure
+    var variantVoicingProbability: Double = 0.5
+    
     static let natural = HumanizerConfig()
     
     static let tight = HumanizerConfig(
@@ -92,6 +98,7 @@ struct HumanizerConfig {
 class MusicHumanizer {
     
     var config: HumanizerConfig
+    private let voicingGenerator = VoicingGenerator()
     
     init(config: HumanizerConfig = .natural) {
         self.config = config
@@ -184,6 +191,7 @@ class MusicHumanizer {
     
     /// Generate humanized note events from a chord progression and voicings
     /// Uses adaptive pattern selection based on chord density per measure
+    /// Supports jazz anticipation (beat 4 upbeat) and tie effects
     func generateNoteEvents(
         from progression: ChordProgression,
         voicings: [Voicing],
@@ -195,12 +203,33 @@ class MusicHumanizer {
         // Group events by measure for density analysis
         let measureChordCounts = analyzeMeasureDensity(events: progression.events, beatsPerMeasure: beatsPerMeasure)
         
+        // Track which chords were anticipated (played early from previous measure)
+        var anticipatedChordIndices: Set<Int> = []
+        
         for (index, event) in progression.events.enumerated() {
             guard index < voicings.count else { continue }
             
             let voicing = voicings[index]
             let measureNumber = Int(floor(event.startBeat / beatsPerMeasure)) + 1
             let chordsInMeasure = measureChordCounts[measureNumber] ?? 1
+            
+            // Phase 2: Check if this chord was already anticipated (tie effect)
+            if anticipatedChordIndices.contains(index) {
+                // Skip this chord's attack - it was already played on beat 4 upbeat of previous measure
+                continue
+            }
+            
+            // Phase 1: Check if we can anticipate the NEXT chord
+            let didAnticipate = tryAnticipateNextChord(
+                currentIndex: index,
+                currentEvent: event,
+                progression: progression,
+                voicings: voicings,
+                beatsPerMeasure: beatsPerMeasure,
+                measureChordCounts: measureChordCounts,
+                notes: &allNotes,
+                anticipatedIndices: &anticipatedChordIndices
+            )
             
             // Select pattern based on chord density
             let selectedPattern = selectPatternForDensity(
@@ -211,11 +240,19 @@ class MusicHumanizer {
             )
             
             if let pat = selectedPattern {
-                let patternNotes = applyRhythmPattern(
+                // Phase 3: Check if we should use variant voicing for second hit
+                // Condition: single chord in measure + pattern has 2 hits + probability check
+                let useVariantVoicing = chordsInMeasure == 1 &&
+                                        pat.hits.count == 2 &&
+                                        Double.random(in: 0..<1) < config.variantVoicingProbability
+                
+                let patternNotes = applyRhythmPatternWithVariant(
                     pattern: pat,
                     to: voicing,
+                    chord: event.chord,
                     startBeat: event.startBeat,
-                    duration: event.duration
+                    duration: event.duration,
+                    useVariantForSecondHit: useVariantVoicing
                 )
                 allNotes.append(contentsOf: humanize(notes: patternNotes, startBeat: event.startBeat))
             } else {
@@ -226,6 +263,79 @@ class MusicHumanizer {
         }
         
         return allNotes
+    }
+    
+    // MARK: - Jazz Anticipation (Beat 4 Upbeat)
+    
+    /// Try to anticipate the next chord on beat 4 upbeat (position 3.5)
+    /// Returns true if anticipation was applied
+    private func tryAnticipateNextChord(
+        currentIndex: Int,
+        currentEvent: ChordEvent,
+        progression: ChordProgression,
+        voicings: [Voicing],
+        beatsPerMeasure: Double,
+        measureChordCounts: [Int: Int],
+        notes: inout [NoteEvent],
+        anticipatedIndices: inout Set<Int>
+    ) -> Bool {
+        // Check probability
+        guard Double.random(in: 0..<1) < config.anticipationProbability else { return false }
+        
+        // Need a next chord to anticipate
+        let nextIndex = currentIndex + 1
+        guard nextIndex < progression.events.count,
+              nextIndex < voicings.count else { return false }
+        
+        let nextEvent = progression.events[nextIndex]
+        let nextVoicing = voicings[nextIndex]
+        
+        // Current chord's measure
+        let currentMeasure = Int(floor(currentEvent.startBeat / beatsPerMeasure)) + 1
+        let nextMeasure = Int(floor(nextEvent.startBeat / beatsPerMeasure)) + 1
+        
+        // Skip anticipation if current measure has more than 2 chords (too busy for syncopation)
+        let currentMeasureChordCount = measureChordCounts[currentMeasure] ?? 1
+        guard currentMeasureChordCount <= 2 else { return false }
+        
+        // Only anticipate if next chord is in the NEXT measure
+        guard nextMeasure == currentMeasure + 1 else { return false }
+        
+        // Next chord should be the FIRST chord in its measure
+        let nextChordPositionInMeasure = nextEvent.startBeat - Double(nextMeasure - 1) * beatsPerMeasure
+        guard nextChordPositionInMeasure < 0.5 else { return false }
+        
+        // Next measure should have only one chord and use single-hit pattern (or whole note)
+        let nextMeasureChordCount = measureChordCounts[nextMeasure] ?? 1
+        guard nextMeasureChordCount == 1 else { return false }
+        
+        // Calculate anticipation position: beat 4 upbeat of current measure (position 3.5)
+        let anticipationBeat = Double(currentMeasure - 1) * beatsPerMeasure + 3.5
+        
+        // Make sure anticipation position is within current chord's duration
+        let currentChordEnd = currentEvent.startBeat + currentEvent.duration
+        guard anticipationBeat >= currentEvent.startBeat && anticipationBeat < currentChordEnd else { return false }
+        
+        // Duration extends to the end of the next chord's duration plus the anticipation offset
+        // nextChordPositionInMeasure is 0.0, so distance from 3.5 to 4.0 is 0.5
+        let anticipationDuration = nextEvent.duration + 0.5
+        
+        // Generate notes for anticipated chord
+        let anticipationNotes = nextVoicing.notes.map { note in
+            NoteEvent(
+                midiNote: note,
+                velocity: 75, // Slightly softer for anticipation
+                position: anticipationBeat,
+                duration: anticipationDuration
+            )
+        }
+        
+        notes.append(contentsOf: humanize(notes: anticipationNotes, startBeat: anticipationBeat))
+        
+        // Mark next chord as anticipated (will be skipped)
+        anticipatedIndices.insert(nextIndex)
+        
+        return true
     }
     
     /// Analyze how many chords are in each measure
@@ -275,6 +385,70 @@ class MusicHumanizer {
     }
     
     // MARK: - Rhythm Pattern Application
+    
+    /// Apply a rhythm pattern with optional variant voicing for second hit
+    /// Used when a measure has one chord with two-hit pattern
+    func applyRhythmPatternWithVariant(
+        pattern: RhythmPattern,
+        to voicing: Voicing,
+        chord: Chord,
+        startBeat: Double,
+        duration: Double,
+        useVariantForSecondHit: Bool
+    ) -> [NoteEvent] {
+        var notes: [NoteEvent] = []
+        let endBeat = startBeat + duration
+        
+        // Generate variant voicing if needed
+        let variantVoicing: Voicing? = useVariantForSecondHit
+            ? voicingGenerator.generateVariantVoicing(baseVoicing: voicing, chord: chord)
+            : nil
+        
+        // Track hit count within this chord's duration
+        var hitCount = 0
+        
+        // Align pattern to the grid
+        var currentPatternBase = floor(startBeat / pattern.lengthInBeats) * pattern.lengthInBeats
+        
+        while currentPatternBase < endBeat {
+            for (index, hit) in pattern.hits.enumerated() {
+                let hitPosition = currentPatternBase + hit.position
+                
+                if hitPosition >= startBeat && hitPosition < endBeat {
+                    let noteDuration: Double
+                    if let explicitDuration = hit.duration {
+                        noteDuration = min(explicitDuration, endBeat - hitPosition)
+                    } else {
+                        let nextHitIndex = (index + 1) % pattern.hits.count
+                        let nextPos: Double
+                        if nextHitIndex == 0 {
+                            nextPos = pattern.lengthInBeats + pattern.hits[0].position
+                        } else {
+                            nextPos = pattern.hits[nextHitIndex].position
+                        }
+                        noteDuration = min(nextPos - hit.position, endBeat - hitPosition)
+                    }
+                    
+                    if noteDuration > 0 {
+                        // Use variant voicing for second hit if enabled
+                        let voicingToUse = (hitCount == 1 && variantVoicing != nil) ? variantVoicing! : voicing
+                        
+                        let hitNotes = generateHitNotes(
+                            voicing: voicingToUse,
+                            hit: hit,
+                            position: hitPosition,
+                            duration: noteDuration
+                        )
+                        notes.append(contentsOf: hitNotes)
+                        hitCount += 1
+                    }
+                }
+            }
+            currentPatternBase += pattern.lengthInBeats
+        }
+        
+        return notes
+    }
     
     /// Apply a rhythm pattern to a voicing with grid-aligned timing
     func applyRhythmPattern(

@@ -746,33 +746,6 @@ struct ReharmView: View {
                 }
             }
             
-            // Rhythm Pattern selection - Dropdown Menu
-            DropdownPickerRow(
-                title: "Rhythm",
-                selectedValue: selectedPatternName,
-                colorScheme: colorScheme,
-                accentColor: NordicTheme.Colors.highlight
-            ) {
-                Button(action: { viewModel.setRhythmPattern(nil) }) {
-                    HStack {
-                        Text("Sustained")
-                        if viewModel.selectedPattern == nil {
-                            Image(systemName: "checkmark")
-                        }
-                    }
-                }
-                ForEach(viewModel.availablePatterns) { pattern in
-                    Button(action: { viewModel.setRhythmPattern(pattern) }) {
-                        HStack {
-                            Text(pattern.name.replacingOccurrences(of: "\(viewModel.selectedStyle.rawValue) ", with: ""))
-                            if viewModel.selectedPattern?.id == pattern.id {
-                                Image(systemName: "checkmark")
-                            }
-                        }
-                    }
-                }
-            }
-            
             // Feel selection - Dropdown Menu
             DropdownPickerRow(
                 title: "Feel",
@@ -796,14 +769,6 @@ struct ReharmView: View {
         .background(NordicTheme.Dynamic.surface(colorScheme))
         .cornerRadius(12)
         .opacity(viewModel.humanizationEnabled ? 1.0 : 0.6)
-    }
-    
-    // Computed property for rhythm pattern name
-    private var selectedPatternName: String {
-        if let pattern = viewModel.selectedPattern {
-            return pattern.name.replacingOccurrences(of: "\(viewModel.selectedStyle.rawValue) ", with: "")
-        }
-        return "Sustained"
     }
     
     private var playbackControlsSection: some View {
@@ -1038,6 +1003,8 @@ struct MeasureCell: View {
         let isSelected = selectedChordIndex == measureChord.globalIndex
         let isTarget = reharmTargets.contains(measureChord.globalIndex)
         let isPolychord = measureChord.chord.extensions.contains("dimStack") && measureChord.chord.quality.isDominant
+        // Filter out internal extensions like "dimStack"
+        let visibleExtensions = measureChord.chord.extensions.filter { $0 != "dimStack" }
         
         return Button(action: { onChordTap(measureChord.globalIndex) }) {
             Group {
@@ -1058,10 +1025,21 @@ struct MeasureCell: View {
                     }
                 } else {
                     VStack(spacing: 1) {
-                        Text(measureChord.chord.root.rawValue)
-                            .font(.system(size: 18, weight: .semibold, design: .rounded))
-                        Text(measureChord.chord.quality.rawValue.isEmpty ? "" : measureChord.chord.quality.rawValue)
-                            .font(.system(size: 10, weight: .medium))
+                        // Root + Quality + Extensions in one line
+                        HStack(alignment: .top, spacing: 0) {
+                            Text(measureChord.chord.root.rawValue)
+                                .font(.system(size: 18, weight: .semibold, design: .rounded))
+                            VStack(alignment: .leading, spacing: 0) {
+                                if !measureChord.chord.quality.rawValue.isEmpty {
+                                    Text(measureChord.chord.quality.rawValue)
+                                        .font(.system(size: 10, weight: .medium))
+                                }
+                                if !visibleExtensions.isEmpty {
+                                    Text("(\(visibleExtensions.joined(separator: ",")))")
+                                        .font(.system(size: 8, weight: .regular))
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -1080,6 +1058,7 @@ struct MeasureCell: View {
         let isSelected = selectedChordIndex == measureChord.globalIndex
         let isTarget = reharmTargets.contains(measureChord.globalIndex)
         let isPolychord = measureChord.chord.extensions.contains("dimStack") && measureChord.chord.quality.isDominant
+        let visibleExtensions = measureChord.chord.extensions.filter { $0 != "dimStack" }
         
         return Button(action: { onChordTap(measureChord.globalIndex) }) {
             Group {
@@ -1099,10 +1078,20 @@ struct MeasureCell: View {
                     }
                 } else {
                     VStack(spacing: 0) {
-                        Text(measureChord.chord.root.rawValue)
-                            .font(.system(size: 14, weight: .semibold, design: .rounded))
-                        Text(measureChord.chord.quality.rawValue.isEmpty ? "" : measureChord.chord.quality.rawValue)
-                            .font(.system(size: 8, weight: .medium))
+                        HStack(alignment: .top, spacing: 0) {
+                            Text(measureChord.chord.root.rawValue)
+                                .font(.system(size: 14, weight: .semibold, design: .rounded))
+                            VStack(alignment: .leading, spacing: 0) {
+                                if !measureChord.chord.quality.rawValue.isEmpty {
+                                    Text(measureChord.chord.quality.rawValue)
+                                        .font(.system(size: 8, weight: .medium))
+                                }
+                                if !visibleExtensions.isEmpty {
+                                    Text("(\(visibleExtensions.joined(separator: ",")))")
+                                        .font(.system(size: 6, weight: .regular))
+                                }
+                            }
+                        }
                     }
                 }
             }
